@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Property Management System
 
-## Getting Started
+A full-featured property management system built with **Next.js**, **Tailwind CSS**, **PostgreSQL** (Render), and **NextAuth.js** (Auth.js) for email/password sign-in.
 
-First, run the development server:
+## Features
+
+- **Building & Unit Management** – Add buildings (address, floors, parking, utilities), units (type, size, rent, lease dates, status)
+- **Tenant Management** – Tenant profiles, business type, documents, emergency contact, move-in/out
+- **Rent & Financial** – Invoices, due dates, payment recording (Cash, Bank, Mobile money), late penalty, outstanding balance
+- **Reports** – Monthly income, building income, outstanding rent, expense tracking
+- **Announcements** – Send to all tenants, selected building, maintenance/emergency/rent reminder
+- **Maintenance** – Tenants submit requests with urgency; admin assigns technician and updates status
+- **Role-based dashboards** – Super Admin, Building Owner, Property Manager, Accountant, Tenant
+
+## Setup
+
+### 1. Environment variables
+
+Copy the example env and set your values:
+
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local`:
+
+- **DATABASE_URL** – Your PostgreSQL URL (e.g. Render; add `?sslmode=require` for Render).
+- **NEXTAUTH_URL** – Your app URL (e.g. `http://localhost:3000` for dev).
+- **NEXTAUTH_SECRET** – A random string for signing sessions (e.g. run `openssl rand -base64 32`).
+
+### 2. Database
+
+Install dependencies and apply schema:
+
+```bash
+npm install
+npx prisma generate
+npx prisma db push
+```
+
+Or use migrations for production:
+
+```bash
+npx prisma migrate dev --name add_nextauth
+```
+
+**Note:** Auth now uses a `password_hash` column on `User` (and no longer uses `supabase_id`). If you had existing users from Supabase, they will need to sign up again to set a password, or you can set a password hash manually in the DB.
+
+### 3. Run the app
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000). Use **Sign up** to create an account (stored in your PostgreSQL `User` table with a hashed password). Then **Sign in** with the same email and password.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. First admin user
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+New sign-ups get role **TENANT**. To make a user **Super Admin** or **Building Owner**, update the `User` row in the database (e.g. with Prisma Studio):
 
-## Learn More
+```bash
+npx prisma studio
+```
 
-To learn more about Next.js, take a look at the following resources:
+Set `role` to `SUPER_ADMIN` or `BUILDING_OWNER` for your user.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Command        | Description                |
+|----------------|----------------------------|
+| `npm run dev`  | Start dev server           |
+| `npm run build`| Generate Prisma + build    |
+| `npm run start`| Start production server    |
+| `npm run db:generate` | Generate Prisma client |
+| `npm run db:push`      | Push schema to DB (no migrations) |
+| `npm run db:migrate`   | Run migrations (production) |
+| `npm run db:studio`    | Open Prisma Studio        |
 
-## Deploy on Vercel
+## Tech stack
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Next.js 16** (App Router)
+- **Tailwind CSS**
+- **Prisma** + PostgreSQL (Render)
+- **NextAuth.js** (Credentials provider: email + password, bcrypt)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tenant profiles
+
+Tenants are users with a linked **TenantProfile** and a **Unit**. To assign a tenant to a unit, create a `TenantProfile` with `userId` and `unitId`, and set the unit status to `OCCUPIED`. This can be done via Prisma Studio or a future “Assign tenant” admin UI.
+# Property-Management-Sym
