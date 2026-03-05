@@ -1,0 +1,80 @@
+import Link from 'next/link';
+import { getInvoice } from '@/app/actions/invoices';
+import { INVOICE_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/types';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { calculateLatePenalty, isOverdue } from '@/lib/invoice-utils';
+import { RecordPaymentForm } from '@/components/payments/RecordPaymentForm';
+
+export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const invoice = await getInvoice(id);
+  const totalPaid = invoice.payments.reduce((s, p) => s + Number(p.amount), 0);
+  const baseAmount = Number(invoice.amount);
+  const dueDate = new Date(invoice.dueDate);
+  const computedPenalty = isOverdue(dueDate) ? calculateLatePenalty(baseAmount, dueDate) : 0;
+  const latePenalty = Math.max(Number(invoice.latePenalty), computedPenalty);
+  const outstanding = Math.max(0, baseAmount + latePenalty - totalPaid);
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+        Invoice {invoice.month}/{invoice.year}
+      </h1>
+      <p className="mt-1 text-slate-500 dark:text-slate-400">
+        {invoice.unit.building.name} – Unit {invoice.unit.unitNumber}
+      </p>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+          <h2 className="font-semibold text-slate-900 dark:text-white">Details</h2>
+          <dl className="mt-3 space-y-2 text-sm">
+            <div><dt className="text-slate-500">Due date</dt><dd>{formatDate(invoice.dueDate)}</dd></div>
+            <div><dt className="text-slate-500">Amount</dt><dd>{formatCurrency(invoice.amount)}</dd></div>
+            {latePenalty > 0 && <div><dt className="text-slate-500">Late penalty</dt><dd className="text-amber-600">{formatCurrency(latePenalty)}</dd></div>}
+            <div><dt className="text-slate-500">Status</dt><dd>{INVOICE_STATUS_LABELS[invoice.status]}</dd></div>
+            <div><dt className="text-slate-500">Total paid</dt><dd>{formatCurrency(totalPaid)}</dd></div>
+            {outstanding > 0 && <div><dt className="text-slate-500">Outstanding</dt><dd className="text-amber-600">{formatCurrency(outstanding)}</dd></div>}
+          </dl>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+          <h2 className="font-semibold text-slate-900 dark:text-white">Record payment</h2>
+          <RecordPaymentForm invoiceId={id} />
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Payment history</h2>
+        {invoice.payments.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-500">No payments recorded yet.</p>
+        ) : (
+          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+            <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
+              <thead className="bg-slate-50 dark:bg-slate-700/50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Method</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Recorded by</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                {invoice.payments.map((p) => (
+                  <tr key={p.id}>
+                    <td className="px-4 py-3 text-sm">{formatDate(p.paidAt)}</td>
+                    <td className="px-4 py-3 text-sm">{formatCurrency(p.amount)}</td>
+                    <td className="px-4 py-3 text-sm">{PAYMENT_METHOD_LABELS[p.method]}</td>
+                    <td className="px-4 py-3 text-sm">{p.recordedBy?.fullName ?? '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6">
+        <Link href="/dashboard/invoices" className="text-sky-500 hover:underline">← Back to invoices</Link>
+      </div>
+    </div>
+  );
+}
