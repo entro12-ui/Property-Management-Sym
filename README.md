@@ -87,3 +87,4 @@ Set `role` to `SUPER_ADMIN` or `BUILDING_OWNER` for your user.
 
 Tenants are users with a linked **TenantProfile** and a **Unit**. To assign a tenant to a unit, create a `TenantProfile` with `userId` and `unitId`, and set the unit status to `OCCUPIED`. This can be done via Prisma Studio or a future “Assign tenant” admin UI.
 # Property-Management-Sym
+# Property-Management-Sym
