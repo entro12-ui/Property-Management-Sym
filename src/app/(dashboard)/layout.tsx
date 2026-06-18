@@ -1,6 +1,7 @@
 import { requireAuth } from '@/lib/auth';
 import { DashboardSidebar } from '@/components/dashboard/Sidebar';
-import { redirect } from 'next/navigation';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { DashboardFooter } from '@/components/dashboard/DashboardFooter';
 
 export default async function DashboardLayout({
   children,
@@ -10,11 +11,17 @@ export default async function DashboardLayout({
   const user = await requireAuth();
 
   return (
-    <div className="flex min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="flex min-h-screen bg-slate-100/80 dark:bg-slate-950">
       <DashboardSidebar user={user} />
-      <main className="flex-1 overflow-auto p-6 lg:p-8">
-        {children}
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <DashboardHeader user={user} />
+        <main className="flex-1 overflow-auto">
+          <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+            {children}
+          </div>
+        </main>
+        <DashboardFooter />
+      </div>
     </div>
   );
 }

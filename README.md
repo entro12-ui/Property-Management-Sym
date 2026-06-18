@@ -1,91 +1,90 @@
 # Property Management System
 
-A full-featured property management system built with **Next.js**, **Tailwind CSS**, **PostgreSQL** (Render), and **NextAuth.js** (Auth.js) for email/password sign-in.
+A professional Building Rental Management System built with **Next.js**, **Tailwind CSS**, **PostgreSQL**, and **NextAuth.js**.
 
 ## Features
 
-- **Building & Unit Management** – Add buildings (address, floors, parking, utilities), units (type, size, rent, lease dates, status)
-- **Tenant Management** – Tenant profiles, business type, documents, emergency contact, move-in/out
-- **Rent & Financial** – Invoices, due dates, payment recording (Cash, Bank, Mobile money), late penalty, outstanding balance
-- **Reports** – Monthly income, building income, outstanding rent, expense tracking
-- **Announcements** – Send to all tenants, selected building, maintenance/emergency/rent reminder
-- **Maintenance** – Tenants submit requests with urgency; admin assigns technician and updates status
-- **Role-based dashboards** – Super Admin, Building Owner, Property Manager, Accountant, Tenant
+- **Building & Room Management** – Ground floor + 8 floors, ~50 rooms, floor-wise grid view, occupancy tracking
+- **Tenant Management** – Full profile, national ID, documents with versioning, room assignment history
+- **Quarterly Billing** – Generate quarterly rent invoices (monthly rent × 3), payment tracking, receipts
+- **Income & Expense Modules** – Categorized income/expenses, approval workflow, receipt attachments
+- **SMS Notifications** – Automated rent reminders (15d, 7d, due, overdue) via Twilio
+- **Financial Dashboard** – Charts, net profit, occupancy, cash flow, PDF/Excel export
+- **Role-based access** – Super Admin, Building Owner, Property Manager, Accountant, Tenant
 
 ## Setup
 
 ### 1. Environment variables
 
-Copy the example env and set your values:
-
 ```bash
 cp .env.example .env.local
 ```
 
-Edit `.env.local`:
+Set `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`. Optionally configure Twilio and `CRON_SECRET` for SMS.
 
-- **DATABASE_URL** – Your PostgreSQL URL (e.g. Render; add `?sslmode=require` for Render).
-- **NEXTAUTH_URL** – Your app URL (e.g. `http://localhost:3000` for dev).
-- **NEXTAUTH_SECRET** – A random string for signing sessions (e.g. run `openssl rand -base64 32`).
+**Important:** Use a dedicated PostgreSQL database for this project.
 
 ### 2. Database
-
-Install dependencies and apply schema:
 
 ```bash
 npm install
 npx prisma generate
+npm run db:sync
+```
+
+`db:sync` safely adds new columns/tables **without** dropping unrelated data (use this instead of `db push` on shared databases).
+
+For a **fresh dedicated database** only:
+
+```bash
 npx prisma db push
 ```
 
-Or use migrations for production:
+### 3. Seed the default building (50 rooms)
 
 ```bash
-npx prisma migrate dev --name add_nextauth
+npm run db:seed
 ```
 
-**Note:** Auth now uses a `password_hash` column on `User` (and no longer uses `supabase_id`). If you had existing users from Supabase, they will need to sign up again to set a password, or you can set a password hash manually in the DB.
+Creates **Central Tower** with ground floor + 8 floors (~50 rooms).
 
-### 3. Run the app
+### 4. Run the app
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Use **Sign up** to create an account (stored in your PostgreSQL `User` table with a hashed password). Then **Sign in** with the same email and password.
-
-### 4. First admin user
-
-New sign-ups get role **TENANT**. To make a user **Super Admin** or **Building Owner**, update the `User` row in the database (e.g. with Prisma Studio):
+Sign up at `/signup`, then promote to admin:
 
 ```bash
-npx prisma studio
+npm run promote-admin -- your@email.com
 ```
 
-Set `role` to `SUPER_ADMIN` or `BUILDING_OWNER` for your user.
+### 5. SMS reminders (cron)
+
+Schedule daily:
+
+```bash
+curl -X POST http://localhost:3000/api/cron/reminders \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
+
+Without Twilio credentials, SMS is logged to the console and marked sent in dev mode.
 
 ## Scripts
 
-| Command        | Description                |
-|----------------|----------------------------|
-| `npm run dev`  | Start dev server           |
-| `npm run build`| Generate Prisma + build    |
-| `npm run start`| Start production server    |
-| `npm run db:generate` | Generate Prisma client |
-| `npm run db:push`      | Push schema to DB (no migrations) |
-| `npm run db:migrate`   | Run migrations (production) |
-| `npm run db:studio`    | Open Prisma Studio        |
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start dev server |
+| `npm run build` | Production build |
+| `npm run db:seed` | Seed Central Tower building |
+| `npm run promote-admin` | Promote user to Super Admin |
+| `npm run db:studio` | Open Prisma Studio |
 
-## Tech stack
+## Export reports
 
-- **Next.js 16** (App Router)
-- **Tailwind CSS**
-- **Prisma** + PostgreSQL (Render)
-- **NextAuth.js** (Credentials provider: email + password, bcrypt)
+From `/dashboard/reports`:
+- **Excel/PDF** financial reports via export buttons
+- **Tenant roster** export
 
-## Tenant profiles
-
-Tenants are users with a linked **TenantProfile** and a **Unit**. To assign a tenant to a unit, create a `TenantProfile` with `userId` and `unitId`, and set the unit status to `OCCUPIED`. This can be done via Prisma Studio or a future “Assign tenant” admin UI.
-# Property-Management-Sym
-# Property-Management-Sym
-# Property-Management-Sym
+API: `GET /api/reports/export?type=financial&format=pdf&year=2026`

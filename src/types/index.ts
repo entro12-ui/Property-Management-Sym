@@ -1,6 +1,40 @@
-import type { Role, UnitType, UnitStatus, InvoiceStatus, PaymentMethod, AnnouncementType, MaintenanceStatus, UrgencyLevel } from '@prisma/client';
+import type {
+  Role,
+  UnitType,
+  UnitStatus,
+  InvoiceStatus,
+  PaymentMethod,
+  AnnouncementType,
+  MaintenanceStatus,
+  UrgencyLevel,
+  TenantStatus,
+  DocumentType,
+  BillingPeriod,
+  IncomeType,
+  ExpenseCategory,
+  ExpenseApprovalStatus,
+  SmsNotificationType,
+  SmsStatus,
+} from '@prisma/client';
 
-export type { Role, UnitType, UnitStatus, InvoiceStatus, PaymentMethod, AnnouncementType, MaintenanceStatus, UrgencyLevel };
+export type {
+  Role,
+  UnitType,
+  UnitStatus,
+  InvoiceStatus,
+  PaymentMethod,
+  AnnouncementType,
+  MaintenanceStatus,
+  UrgencyLevel,
+  TenantStatus,
+  DocumentType,
+  BillingPeriod,
+  IncomeType,
+  ExpenseCategory,
+  ExpenseApprovalStatus,
+  SmsNotificationType,
+  SmsStatus,
+};
 
 export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN: 'Super Admin',
@@ -11,6 +45,7 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 export const UNIT_TYPE_LABELS: Record<UnitType, string> = {
+  ROOM: 'Room',
   SHOP: 'Shop',
   OFFICE: 'Office',
   RESTAURANT: 'Restaurant',
@@ -19,9 +54,35 @@ export const UNIT_TYPE_LABELS: Record<UnitType, string> = {
 };
 
 export const UNIT_STATUS_LABELS: Record<UnitStatus, string> = {
-  AVAILABLE: 'Available',
+  AVAILABLE: 'Vacant',
   OCCUPIED: 'Occupied',
-  MAINTENANCE: 'Maintenance',
+  RESERVED: 'Reserved',
+  MAINTENANCE: 'Under Maintenance',
+};
+
+export const TENANT_STATUS_LABELS: Record<TenantStatus, string> = {
+  ACTIVE: 'Active',
+  PENDING: 'Pending',
+  VACATED: 'Vacated',
+  SUSPENDED: 'Suspended',
+};
+
+export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+  NATIONAL_ID_FRONT: 'National ID (Front)',
+  NATIONAL_ID_BACK: 'National ID (Back)',
+  LEASE_AGREEMENT: 'Lease Agreement',
+  RENTAL_AGREEMENT: 'Rental Agreement',
+  OTHER: 'Other Document',
+  ID: 'ID Document',
+  TRADE_LICENSE: 'Trade License',
+  CIVIL_DEFENSE_APPROVAL: 'Civil Defense Approval',
+  NOTICE: 'Notice',
+  NOC_LETTER: 'NOC Letter',
+};
+
+export const BILLING_PERIOD_LABELS: Record<BillingPeriod, string> = {
+  MONTHLY: 'Monthly',
+  QUARTERLY: 'Quarterly',
 };
 
 export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
@@ -39,6 +100,51 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   MOBILE_MONEY: 'Mobile Money',
   CARD: 'Card',
   OTHER: 'Other',
+};
+
+export const INCOME_TYPE_LABELS: Record<IncomeType, string> = {
+  RENTAL: 'Rental Income',
+  ADVANCE_PAYMENT: 'Advance Payment',
+  DEPOSIT: 'Deposit',
+  ADDITIONAL_CHARGE: 'Additional Charge',
+  OTHER: 'Other Income',
+};
+
+export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
+  CLEANING: 'Cleaner Salaries',
+  SECURITY: 'Security Guard Salaries',
+  WATER: 'Water Bills',
+  ELECTRICITY: 'Electricity Bills',
+  MAINTENANCE: 'Maintenance Costs',
+  REPAIR: 'Repair Costs',
+  ADMINISTRATIVE: 'Administrative Expenses',
+  MISCELLANEOUS: 'Miscellaneous',
+  UTILITIES: 'Utilities',
+  INSURANCE: 'Insurance',
+  TAXES: 'Taxes',
+  OTHER: 'Other',
+};
+
+export const EXPENSE_APPROVAL_LABELS: Record<ExpenseApprovalStatus, string> = {
+  PENDING: 'Pending Approval',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+};
+
+export const SMS_TYPE_LABELS: Record<SmsNotificationType, string> = {
+  RENT_REMINDER_15_DAYS: '15-Day Reminder',
+  RENT_REMINDER_7_DAYS: '7-Day Reminder',
+  RENT_DUE_TODAY: 'Due Today',
+  RENT_OVERDUE: 'Overdue Notice',
+  ANNOUNCEMENT: 'Announcement',
+  MANUAL: 'Manual',
+};
+
+export const SMS_STATUS_LABELS: Record<SmsStatus, string> = {
+  PENDING: 'Pending',
+  SENT: 'Sent',
+  FAILED: 'Failed',
+  SKIPPED: 'Skipped',
 };
 
 export const ANNOUNCEMENT_TYPE_LABELS: Record<AnnouncementType, string> = {
@@ -61,3 +167,19 @@ export const URGENCY_LABELS: Record<UrgencyLevel, string> = {
   HIGH: 'High',
   URGENT: 'Urgent',
 };
+
+export const FLOOR_LABELS: Record<number, string> = {
+  0: 'Ground Floor',
+  1: '1st Floor',
+  2: '2nd Floor',
+  3: '3rd Floor',
+  4: '4th Floor',
+  5: '5th Floor',
+  6: '6th Floor',
+  7: '7th Floor',
+  8: '8th Floor',
+};
+
+export function floorLabel(floor: number): string {
+  return FLOOR_LABELS[floor] ?? `Floor ${floor}`;
+}

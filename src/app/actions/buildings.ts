@@ -1,14 +1,17 @@
 'use server';
 
 import { prisma } from '@/lib/db';
-import { requireRole } from '@/lib/auth';
+import { requireRole, requireAuth } from '@/lib/auth';
+import { buildingWhereForUser } from '@/lib/building-scope';
 import { revalidatePath } from 'next/cache';
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER'] as const;
 
 export async function getBuildings() {
-  await requireRole([...ADMIN_ROLES, 'ACCOUNTANT']);
+  const user = await requireRole([...ADMIN_ROLES, 'ACCOUNTANT']);
+  const scope = buildingWhereForUser(user);
   return prisma.building.findMany({
+    where: scope,
     orderBy: { name: 'asc' },
     include: {
       owner: { select: { id: true, fullName: true, email: true } },
@@ -18,19 +21,52 @@ export async function getBuildings() {
 }
 
 export async function getBuilding(id: string) {
-  await requireRole([...ADMIN_ROLES, 'ACCOUNTANT']);
-  return prisma.building.findUniqueOrThrow({
-    where: { id },
+  const user = await requireRole([...ADMIN_ROLES, 'ACCOUNTANT']);
+  const scope = buildingWhereForUser(user);
+  return prisma.building.findFirstOrThrow({
+    where: { id, ...scope },
     include: {
       owner: true,
       manager: true,
-      units: true,
+      units: {
+        orderBy: [{ floorNumber: 'asc' }, { unitNumber: 'asc' }],
+        include: { tenant: { include: { user: { select: { fullName: true } } } } },
+      },
     },
   });
 }
 
+export async function getBuildingFloorSummary(buildingId: string) {
+  const user = await requireRole([...ADMIN_ROLES, 'ACCOUNTANT']);
+  const scope = buildingWhereForUser(user);
+  const building = await prisma.building.findFirstOrThrow({
+    where: { id: buildingId, ...scope },
+    select: { numberOfFloors: true },
+  });
+
+  const units = await prisma.unit.findMany({
+    where: { buildingId },
+    select: { floorNumber: true, status: true },
+  });
+
+  const floors: Record<number, { total: number; occupied: number; vacant: number; reserved: number; maintenance: number }> = {};
+  for (let f = 0; f < building.numberOfFloors; f++) {
+    floors[f] = { total: 0, occupied: 0, vacant: 0, reserved: 0, maintenance: 0 };
+  }
+  for (const u of units) {
+    const fl = floors[u.floorNumber] ?? { total: 0, occupied: 0, vacant: 0, reserved: 0, maintenance: 0 };
+    fl.total++;
+    if (u.status === 'OCCUPIED') fl.occupied++;
+    else if (u.status === 'AVAILABLE') fl.vacant++;
+    else if (u.status === 'RESERVED') fl.reserved++;
+    else if (u.status === 'MAINTENANCE') fl.maintenance++;
+    floors[u.floorNumber] = fl;
+  }
+  return floors;
+}
+
 export async function createBuilding(formData: FormData) {
-  await requireRole([...ADMIN_ROLES]);
+  const user = await requireRole([...ADMIN_ROLES]);
   const name = formData.get('name') as string;
   const address = formData.get('address') as string;
   const city = formData.get('city') as string;
@@ -52,6 +88,7 @@ export async function createBuilding(formData: FormData) {
       parkingSpaces,
       utilitiesInfo,
       notes,
+      ownerId: user.role === 'BUILDING_OWNER' ? user.id : undefined,
     },
   });
   revalidatePath('/dashboard');
@@ -72,17 +109,7 @@ export async function updateBuilding(id: string, formData: FormData) {
 
   await prisma.building.update({
     where: { id },
-    data: {
-      name,
-      address,
-      city,
-      state,
-      zipCode,
-      numberOfFloors,
-      parkingSpaces,
-      utilitiesInfo,
-      notes,
-    },
+    data: { name, address, city, state, zipCode, numberOfFloors, parkingSpaces, utilitiesInfo, notes },
   });
   revalidatePath('/dashboard');
   revalidatePath('/dashboard/buildings');

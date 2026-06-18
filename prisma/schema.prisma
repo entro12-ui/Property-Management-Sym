@@ -1,5 +1,5 @@
 // Property Management System - PostgreSQL Schema (Render)
-// Run: npx prisma migrate dev (or deploy for production)
+// Run: npx prisma db push (dev) or npx prisma migrate dev (production)
 
 generator client {
   provider = "prisma-client-js"
@@ -23,7 +23,7 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   passwordHash  String?   @map("password_hash")
-  supabaseId    String?   @unique @map("supabase_id") // deprecated; kept for existing DBs
+  supabaseId    String?   @unique @map("supabase_id")
   fullName      String    @map("full_name")
   phone         String?
   role          Role      @default(TENANT)
@@ -31,16 +31,19 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  // Relations
-  tenantProfile    TenantProfile?
-  ownedBuildings   Building[]       @relation("BuildingOwner")
-  managedBuildings Building[]       @relation("PropertyManager")
-  announcements    Announcement[]
-  announcementReads AnnouncementRead[]
-  maintenanceRequests MaintenanceRequest[]  @relation("RequestedBy")
-  maintenanceAssigned MaintenanceRequest[]   @relation("AssignedTo")
-  payments         Payment[]
-  accessLogs       AccessLog[]
+  tenantProfile         TenantProfile?
+  ownedBuildings        Building[]       @relation("BuildingOwner")
+  managedBuildings      Building[]       @relation("PropertyManager")
+  announcements         Announcement[]
+  announcementReads     AnnouncementRead[]
+  maintenanceRequests   MaintenanceRequest[]  @relation("RequestedBy")
+  maintenanceAssigned   MaintenanceRequest[]  @relation("AssignedTo")
+  payments              Payment[]
+  accessLogs            AccessLog[]
+  uploadedDocuments     TenantDocument[]
+  recordedIncomes       Income[]
+  approvedExpenses      Expense[]        @relation("ExpenseApprover")
+  activityLogs          ActivityLog[]
 }
 
 // ============ BUILDINGS & UNITS ============
@@ -54,7 +57,7 @@ model Building {
   country         String   @default("USA")
   numberOfFloors  Int      @map("number_of_floors")
   parkingSpaces   Int      @default(0) @map("parking_spaces")
-  utilitiesInfo   String?  @map("utilities_info") // JSON or text: water, electricity, etc.
+  utilitiesInfo   String?  @map("utilities_info")
   notes           String?
   ownerId         String?  @map("owner_id")
   managerId       String?  @map("manager_id")
@@ -65,11 +68,13 @@ model Building {
   manager         User?    @relation("PropertyManager", fields: [managerId], references: [id], onDelete: SetNull)
   units           Unit[]
   expenses        Expense[]
+  incomes         Income[]
   announcements   Announcement[]
   visitorLogs     VisitorLog[]
 }
 
 enum UnitType {
+  ROOM
   SHOP
   OFFICE
   RESTAURANT
@@ -80,6 +85,7 @@ enum UnitType {
 enum UnitStatus {
   AVAILABLE
   OCCUPIED
+  RESERVED
   MAINTENANCE
 }
 
@@ -88,7 +94,7 @@ model Unit {
   buildingId    String     @map("building_id")
   unitNumber    String     @map("unit_number")
   floorNumber   Int        @map("floor_number")
-  unitType      UnitType   @map("unit_type")
+  unitType      UnitType   @default(ROOM) @map("unit_type")
   sizeSqm       Decimal    @map("size_sqm") @db.Decimal(10, 2)
   rentAmount    Decimal    @map("rent_amount") @db.Decimal(12, 2)
   leaseStart    DateTime?  @map("lease_start") @db.Date
@@ -98,33 +104,96 @@ model Unit {
   createdAt     DateTime   @default(now()) @map("created_at")
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
-  building      Building   @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  tenant        TenantProfile?
-  invoices      Invoice[]
+  building            Building            @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  tenant              TenantProfile?
+  invoices            Invoice[]
   maintenanceRequests MaintenanceRequest[]
-  utilityReadings UtilityReading[]
+  utilityReadings     UtilityReading[]
+  assignmentHistory   TenantUnitHistory[]
+
+  @@unique([buildingId, unitNumber])
 }
 
 // ============ TENANT ============
-model TenantProfile {
-  id                String    @id @default(cuid())
-  userId            String    @unique @map("user_id")
-  unitId            String?   @unique @map("unit_id")
-  businessType      String?   @map("business_type")
-  idDocumentUrl     String?   @map("id_document_url")   // ID/License upload URL
-  leaseAgreementUrl String?   @map("lease_agreement_url")
-  emergencyContact  String?   @map("emergency_contact")
-  emergencyPhone   String?   @map("emergency_phone")
-  moveInDate        DateTime? @map("move_in_date") @db.Date
-  moveOutDate       DateTime? @map("move_out_date") @db.Date
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+enum TenantStatus {
+  ACTIVE
+  PENDING
+  VACATED
+  SUSPENDED
+}
 
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  unit              Unit?     @relation(fields: [unitId], references: [id], onDelete: SetNull)
+enum DocumentType {
+  NATIONAL_ID_FRONT
+  NATIONAL_ID_BACK
+  LEASE_AGREEMENT
+  RENTAL_AGREEMENT
+  OTHER
+  ID
+  TRADE_LICENSE
+  CIVIL_DEFENSE_APPROVAL
+  NOTICE
+  NOC_LETTER
+}
+
+model TenantProfile {
+  id                String        @id @default(cuid())
+  userId            String        @unique @map("user_id")
+  unitId            String?       @unique @map("unit_id")
+  address           String?
+  nationalId        String?       @map("national_id")
+  occupation        String?
+  businessType      String?       @map("business_type")
+  tenantStatus      TenantStatus  @default(ACTIVE) @map("tenant_status")
+  idDocumentUrl     String?       @map("id_document_url")
+  leaseAgreementUrl String?       @map("lease_agreement_url")
+  emergencyContact  String?       @map("emergency_contact")
+  emergencyPhone    String?       @map("emergency_phone")
+  moveInDate        DateTime?     @map("move_in_date") @db.Date
+  moveOutDate       DateTime?     @map("move_out_date") @db.Date
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  unit              Unit?             @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  documents         TenantDocument[]
+  unitHistory       TenantUnitHistory[]
+  incomes           Income[]
+  smsLogs           SmsNotificationLog[]
+}
+
+model TenantDocument {
+  id           String       @id @default(cuid())
+  tenantId     String       @map("tenant_id")
+  type         DocumentType
+  fileName     String       @map("file_name")
+  fileUrl      String       @map("file_url")
+  mimeType     String?      @map("mime_type")
+  version      Int          @default(1)
+  uploadedById String?      @map("uploaded_by_id")
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  tenant       TenantProfile @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploadedBy   User?         @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+}
+
+model TenantUnitHistory {
+  id         String    @id @default(cuid())
+  tenantId   String    @map("tenant_id")
+  unitId     String    @map("unit_id")
+  assignedAt DateTime  @map("assigned_at") @db.Date
+  vacatedAt  DateTime? @map("vacated_at") @db.Date
+  notes      String?
+
+  tenant     TenantProfile @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  unit       Unit          @relation(fields: [unitId], references: [id], onDelete: Cascade)
 }
 
 // ============ INVOICES & RENT ============
+enum BillingPeriod {
+  MONTHLY
+  QUARTERLY
+}
+
 enum InvoiceStatus {
   DRAFT
   SENT
@@ -137,9 +206,13 @@ enum InvoiceStatus {
 model Invoice {
   id            String        @id @default(cuid())
   unitId        String        @map("unit_id")
-  tenantId      String?       @map("tenant_id") // TenantProfile id
-  month         Int           // 1-12
+  tenantId      String?       @map("tenant_id")
+  periodType    BillingPeriod @default(QUARTERLY) @map("period_type")
+  month         Int?
   year          Int
+  quarter       Int?
+  periodStart   DateTime?     @map("period_start") @db.Date
+  periodEnd     DateTime?     @map("period_end") @db.Date
   dueDate       DateTime      @map("due_date") @db.Date
   amount        Decimal       @db.Decimal(12, 2)
   latePenalty   Decimal       @default(0) @map("late_penalty") @db.Decimal(12, 2)
@@ -150,6 +223,7 @@ model Invoice {
 
   unit          Unit          @relation(fields: [unitId], references: [id], onDelete: Cascade)
   payments      Payment[]
+  smsLogs       SmsNotificationLog[]
 }
 
 enum PaymentMethod {
@@ -162,31 +236,129 @@ enum PaymentMethod {
 
 model Payment {
   id            String        @id @default(cuid())
-  invoiceId     String       @map("invoice_id")
-  amount        Decimal      @db.Decimal(12, 2)
+  invoiceId     String        @map("invoice_id")
+  amount        Decimal       @db.Decimal(12, 2)
   method        PaymentMethod
-  receiptUrl    String?      @map("receipt_url")
-  reference     String?      // Bank ref, transaction id
-  paidAt        DateTime     @map("paid_at") @db.Date
-  recordedById  String?      @map("recorded_by_id")
+  receiptUrl    String?       @map("receipt_url")
+  receiptNumber String?       @map("receipt_number")
+  reference     String?
+  paidAt        DateTime      @map("paid_at") @db.Date
+  recordedById  String?       @map("recorded_by_id")
   notes         String?
-  createdAt     DateTime     @default(now()) @map("created_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
 
-  invoice       Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  recordedBy    User?        @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  recordedBy    User?         @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+}
+
+// ============ INCOME ============
+enum IncomeType {
+  RENTAL
+  ADVANCE_PAYMENT
+  DEPOSIT
+  ADDITIONAL_CHARGE
+  OTHER
+}
+
+model Income {
+  id           String     @id @default(cuid())
+  buildingId   String     @map("building_id")
+  tenantId     String?    @map("tenant_id")
+  type         IncomeType
+  amount       Decimal    @db.Decimal(12, 2)
+  description  String?
+  incomeDate   DateTime   @map("income_date") @db.Date
+  recordedById String?    @map("recorded_by_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  building     Building       @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  tenant       TenantProfile? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  recordedBy   User?          @relation(fields: [recordedById], references: [id], onDelete: SetNull)
 }
 
 // ============ EXPENSES ============
+enum ExpenseCategory {
+  CLEANING
+  SECURITY
+  WATER
+  ELECTRICITY
+  MAINTENANCE
+  REPAIR
+  ADMINISTRATIVE
+  MISCELLANEOUS
+  UTILITIES
+  INSURANCE
+  TAXES
+  OTHER
+}
+
+enum ExpenseApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Expense {
+  id             String                @id @default(cuid())
+  buildingId     String                @map("building_id")
+  category       ExpenseCategory
+  amount         Decimal               @db.Decimal(12, 2)
+  description    String?
+  receiptUrl     String?               @map("receipt_url")
+  expenseDate    DateTime              @map("expense_date") @db.Date
+  approvalStatus ExpenseApprovalStatus @default(PENDING) @map("approval_status")
+  approvedById   String?               @map("approved_by_id")
+  approvedAt     DateTime?             @map("approved_at")
+  createdAt      DateTime              @default(now()) @map("created_at")
+
+  building       Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  approvedBy     User?    @relation("ExpenseApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+}
+
+// ============ SMS NOTIFICATIONS ============
+enum SmsNotificationType {
+  RENT_REMINDER_15_DAYS
+  RENT_REMINDER_7_DAYS
+  RENT_DUE_TODAY
+  RENT_OVERDUE
+  ANNOUNCEMENT
+  MANUAL
+}
+
+enum SmsStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
+model SmsNotificationLog {
+  id           String              @id @default(cuid())
+  tenantId     String?             @map("tenant_id")
+  invoiceId    String?             @map("invoice_id")
+  phone        String
+  message      String              @db.Text
+  type         SmsNotificationType
+  status       SmsStatus           @default(PENDING)
+  sentAt       DateTime?           @map("sent_at")
+  errorMessage String?             @map("error_message")
+  createdAt    DateTime            @default(now()) @map("created_at")
+
+  tenant       TenantProfile? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  invoice      Invoice?       @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+}
+
+// ============ ACTIVITY LOG ============
+model ActivityLog {
   id          String   @id @default(cuid())
-  buildingId  String   @map("building_id")
-  category    String   // maintenance, security, cleaning, utilities, etc.
-  amount      Decimal  @db.Decimal(12, 2)
-  description String?
-  expenseDate DateTime @map("expense_date") @db.Date
+  userId      String?  @map("user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  description String
   createdAt   DateTime @default(now()) @map("created_at")
 
-  building    Building @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }
 
 // ============ ANNOUNCEMENTS ============
@@ -198,31 +370,31 @@ enum AnnouncementType {
 }
 
 model Announcement {
-  id          String            @id @default(cuid())
-  buildingId  String?           @map("building_id") // null = all buildings (super admin)
-  authorId    String            @map("author_id")
-  type        AnnouncementType  @default(GENERAL)
-  title       String
-  body        String            @db.Text
-  targetFloors Int[]            @default([]) @map("target_floors") // empty = all
-  targetUnitIds String[]        @default([]) @map("target_unit_ids") // empty = all
-  sendSms     Boolean           @default(false) @map("send_sms")
-  createdAt   DateTime          @default(now()) @map("created_at")
+  id            String           @id @default(cuid())
+  buildingId    String?          @map("building_id")
+  authorId      String           @map("author_id")
+  type          AnnouncementType @default(GENERAL)
+  title         String
+  body          String           @db.Text
+  targetFloors  Int[]            @default([]) @map("target_floors")
+  targetUnitIds String[]         @default([]) @map("target_unit_ids")
+  sendSms       Boolean          @default(false) @map("send_sms")
+  createdAt     DateTime         @default(now()) @map("created_at")
 
-  building    Building?         @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  author      User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  reads       AnnouncementRead[]
+  building      Building?        @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  author        User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reads         AnnouncementRead[]
 }
 
 model AnnouncementRead {
-  id              String       @id @default(cuid())
-  announcementId  String       @map("announcement_id")
-  userId          String       @map("user_id")
-  readAt          DateTime     @default(now()) @map("read_at")
-  reply           String?      @db.Text
+  id             String       @id @default(cuid())
+  announcementId String       @map("announcement_id")
+  userId         String       @map("user_id")
+  readAt         DateTime     @default(now()) @map("read_at")
+  reply          String?      @db.Text
 
-  announcement    Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
-  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // ============ MAINTENANCE ============
@@ -241,26 +413,26 @@ enum UrgencyLevel {
 }
 
 model MaintenanceRequest {
-  id          String            @id @default(cuid())
-  unitId      String            @map("unit_id")
-  requestedById String           @map("requested_by_id")
-  title       String
-  description String            @db.Text
-  imageUrls   String[]          @default([]) @map("image_urls")
-  urgency     UrgencyLevel      @default(MEDIUM)
-  status      MaintenanceStatus @default(PENDING)
-  assignedToId String?          @map("assigned_to_id")
-  cost        Decimal?          @db.Decimal(12, 2)
-  completedAt DateTime?         @map("completed_at")
-  createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime          @updatedAt @map("updated_at")
+  id            String            @id @default(cuid())
+  unitId        String            @map("unit_id")
+  requestedById String            @map("requested_by_id")
+  title         String
+  description   String            @db.Text
+  imageUrls     String[]          @default([]) @map("image_urls")
+  urgency       UrgencyLevel      @default(MEDIUM)
+  status        MaintenanceStatus @default(PENDING)
+  assignedToId  String?           @map("assigned_to_id")
+  cost          Decimal?          @db.Decimal(12, 2)
+  completedAt   DateTime?         @map("completed_at")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
 
-  unit        Unit              @relation(fields: [unitId], references: [id], onDelete: Cascade)
-  requestedBy User              @relation("RequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
-  assignedTo  User?             @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  unit          Unit              @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  requestedBy   User              @relation("RequestedBy", fields: [requestedById], references: [id], onDelete: Cascade)
+  assignedTo    User?             @relation("AssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
 }
 
-// ============ ACCESS & SECURITY (optional) ============
+// ============ ACCESS & SECURITY ============
 model VisitorLog {
   id          String    @id @default(cuid())
   buildingId  String    @map("building_id")
@@ -277,18 +449,18 @@ model VisitorLog {
 model AccessLog {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
-  action    String   // login, access_granted, etc.
+  action    String
   details   String?  @db.Text
   createdAt DateTime @default(now()) @map("created_at")
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-// ============ UTILITY BILLING (optional) ============
+// ============ UTILITY BILLING ============
 model UtilityReading {
   id          String   @id @default(cuid())
   unitId      String   @map("unit_id")
-  type        String   // water, electricity, gas
+  type        String
   reading     Decimal  @db.Decimal(12, 2)
   readingDate DateTime @map("reading_date") @db.Date
   createdAt   DateTime @default(now()) @map("created_at")

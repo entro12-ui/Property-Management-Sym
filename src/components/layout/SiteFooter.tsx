@@ -1,0 +1,62 @@
+'use client';
+
+import Link from 'next/link';
+import { useLocale } from '@/components/providers/LocaleProvider';
+import { BrandLogo } from '@/components/layout/BrandLogo';
+
+export function SiteFooter() {
+  const { t } = useLocale();
+  const year = new Date().getFullYear();
+
+  return (
+    <footer className="border-t-2 border-amber-600/50 bg-stone-950 text-stone-400">
+      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <div className="grid gap-10 md:grid-cols-3">
+          <div className="md:col-span-1">
+            <BrandLogo tone="onDark" />
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-stone-400">
+              {t('home.footerAbout')}
+            </p>
+          </div>
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-500/90">
+              {t('home.footerProduct')}
+            </h3>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              <li><span className="text-stone-300">{t('nav.tenants')}</span></li>
+              <li><span className="text-stone-300">{t('nav.invoices')}</span></li>
+              <li><span className="text-stone-300">{t('nav.reports')}</span></li>
+              <li><span className="text-stone-300">{t('nav.announcements')}</span></li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-500/90">
+              {t('home.footerPortals')}
+            </h3>
+            <ul className="mt-4 space-y-2.5 text-sm">
+              <li>
+                <Link href="/login" className="text-stone-300 transition hover:text-amber-400">
+                  {t('home.tenantLogin')}
+                </Link>
+              </li>
+              <li>
+                <Link href="/admin/login" className="text-stone-300 transition hover:text-amber-400">
+                  {t('home.adminLogin')}
+                </Link>
+              </li>
+              <li>
+                <Link href="/signup" className="text-stone-300 transition hover:text-amber-400">
+                  {t('auth.signUp')}
+                </Link>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-stone-800 pt-8 text-center text-xs text-stone-500 sm:flex-row sm:text-left">
+          <p>© {year} {t('common.appName')}. {t('home.footerRights')}</p>
+          <p className="text-stone-400">{t('home.tagline')}</p>
+        </div>
+      </div>
+    </footer>
+  );
+}

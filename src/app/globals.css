@@ -10,6 +10,12 @@
   --border: #e2e8f0;
   --card: #ffffff;
   --ring: #0ea5e9;
+  --shell-header: #1e1b4b;
+  --shell-header-border: #312e81;
+  --shell-sidebar: #022c22;
+  --shell-sidebar-border: #064e3b;
+  --shell-footer: #1c1917;
+  --shell-footer-border: #d97706;
 }
 
 @theme inline {
@@ -30,10 +36,20 @@
   }
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background-color: rgb(14 165 233 / 0.25);
 }
 
 /* Form focus ring */

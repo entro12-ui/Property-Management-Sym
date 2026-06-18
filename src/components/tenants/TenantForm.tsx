@@ -1,14 +1,27 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useFormStatus } from 'react-dom';
+import { createTenant, updateTenant } from '@/app/actions/tenants';
+import { useLocale } from '@/components/providers/LocaleProvider';
+import type { TenantStatus } from '@prisma/client';
+import { FileUploadZone } from '@/components/ui/FileUploadZone';
+import { FileText } from 'lucide-react';
 
 type TenantFormProps = {
   users: { id: string; fullName: string; email: string }[];
   units: { id: string; label: string }[];
   tenant?: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone: string | null;
+    address: string | null;
+    nationalId: string | null;
+    occupation: string | null;
     businessType: string | null;
+    tenantStatus: TenantStatus;
     emergencyContact: string | null;
     emergencyPhone: string | null;
     moveInDate: Date | null;
@@ -18,56 +31,62 @@ type TenantFormProps = {
     userId: string;
     unitId: string | null;
   };
-  action: (formData: FormData) => void;
   submitLabel: string;
 };
+
+const STATUSES: TenantStatus[] = ['ACTIVE', 'PENDING', 'VACATED', 'SUSPENDED'];
 
 function toInputDate(d: Date | null): string {
   if (!d) return '';
   return new Date(d).toISOString().slice(0, 10);
 }
 
-export function TenantForm({ users, units, tenant, action, submitLabel }: TenantFormProps) {
-  const formRef = useRef<HTMLFormElement>(null);
+export function TenantForm({ users, units, tenant, submitLabel }: TenantFormProps) {
+  const { t, labels } = useLocale();
   const [idDocUrl, setIdDocUrl] = useState(tenant?.idDocumentUrl ?? '');
   const [leaseUrl, setLeaseUrl] = useState(tenant?.leaseAgreementUrl ?? '');
+  const [idDocName, setIdDocName] = useState<string | null>(
+    tenant?.idDocumentUrl ? t('upload.existingId') : null
+  );
+  const [leaseName, setLeaseName] = useState<string | null>(
+    tenant?.leaseAgreementUrl ? t('upload.existingLease') : null
+  );
 
-  async function handleFileUpload(field: 'idDocumentUrl' | 'leaseAgreementUrl', file: File) {
+  async function uploadFile(file: File): Promise<string> {
     const formData = new FormData();
     formData.set('file', file);
     formData.set('type', 'tenant-doc');
     const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    if (!res.ok) return;
+    if (!res.ok) throw new Error('Upload failed');
     const { url } = await res.json();
-    if (field === 'idDocumentUrl') setIdDocUrl(url);
-    else setLeaseUrl(url);
+    return url;
   }
 
   return (
     <form
-      ref={formRef}
-      action={(fd) => {
+      action={async (fd) => {
         if (idDocUrl) fd.set('idDocumentUrl', idDocUrl);
         if (leaseUrl) fd.set('leaseAgreementUrl', leaseUrl);
-        action(fd);
+        if (tenant?.id) await updateTenant(tenant.id, fd);
+        else await createTenant(fd);
       }}
       className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800"
     >
       {!tenant && (
         <>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">User</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('tenants.user')}</label>
             <select name="userId" required className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white">
-              <option value="">Select user</option>
+              <option value="">{t('tenants.selectUser')}</option>
               {users.map((u) => (
                 <option key={u.id} value={u.id}>{u.fullName} ({u.email})</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Unit</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('common.room')}</label>
             <select name="unitId" required className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white">
-              <option value="">Select unit</option>
+              <option value="">{t('tenants.selectRoom')}</option>
               {units.map((u) => (
                 <option key={u.id} value={u.id}>{u.label}</option>
               ))}
@@ -75,43 +94,145 @@ export function TenantForm({ users, units, tenant, action, submitLabel }: Tenant
           </div>
         </>
       )}
-      <div>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Business type</label>
-        <input name="businessType" defaultValue={tenant?.businessType ?? ''} className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" placeholder="e.g. Retail, Office" />
+      {tenant && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-700 dark:bg-slate-900/30">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('tenants.tenantInfo')}</h3>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{t('tenants.tenantInfoHint')}</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                {t('tenants.fullName')}
+              </label>
+              <input
+                id="fullName"
+                name="fullName"
+                required
+                defaultValue={tenant.fullName}
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+              />
+            </div>
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                {t('common.email')}
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                readOnly
+                value={tenant.email}
+                className="mt-1 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-slate-600 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400"
+              />
+            </div>
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                {t('common.phone')}
+              </label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                defaultValue={tenant.phone ?? ''}
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('common.address')}</label>
+          <input name="address" defaultValue={tenant?.address ?? ''} className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('tenants.nationalId')}</label>
+          <input name="nationalId" defaultValue={tenant?.nationalId ?? ''} className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('tenants.occupation')}</label>
+          <input name="occupation" defaultValue={tenant?.occupation ?? ''} className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('tenants.businessType')}</label>
+          <input name="businessType" defaultValue={tenant?.businessType ?? ''} className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" placeholder="e.g. Retail, Office" />
+        </div>
+        {tenant && (
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('tenants.tenantStatus')}</label>
+            <select name="tenantStatus" defaultValue={tenant.tenantStatus} className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white">
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>{labels.tenantStatus[s]}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Emergency contact</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('tenants.emergencyContact')}</label>
           <input name="emergencyContact" defaultValue={tenant?.emergencyContact ?? ''} className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Emergency phone</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('tenants.emergencyPhone')}</label>
           <input name="emergencyPhone" defaultValue={tenant?.emergencyPhone ?? ''} type="tel" className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" />
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Move-in date</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('tenants.moveIn')}</label>
           <input name="moveInDate" type="date" defaultValue={toInputDate(tenant?.moveInDate ?? null)} className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Move-out date</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('tenants.moveOut')}</label>
           <input name="moveOutDate" type="date" defaultValue={toInputDate(tenant?.moveOutDate ?? null)} className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" />
         </div>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">ID / License (upload PDF or image)</label>
-        <input type="file" accept=".pdf,image/*" className="mt-1 text-sm" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload('idDocumentUrl', f); }} />
-        {idDocUrl && <p className="mt-1 text-xs text-slate-500">Uploaded. <a href={idDocUrl} target="_blank" rel="noopener noreferrer" className="text-sky-500">View</a></p>}
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Lease agreement (upload PDF)</label>
-        <input type="file" accept=".pdf" className="mt-1 text-sm" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload('leaseAgreementUrl', f); }} />
-        {leaseUrl && <p className="mt-1 text-xs text-slate-500">Uploaded. <a href={leaseUrl} target="_blank" rel="noopener noreferrer" className="text-sky-500">View</a></p>}
+      <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-700 dark:bg-slate-900/30">
+        <div className="mb-4 flex items-center gap-2">
+          <FileText className="h-5 w-5 text-sky-500" />
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('tenants.tenantDocuments')}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('tenants.tenantDocumentsHint')}</p>
+          </div>
+        </div>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <FileUploadZone
+            label={t('tenants.nationalIdDoc')}
+            description={t('tenants.nationalIdDocHint')}
+            accept=".pdf,image/jpeg,image/png,image/jpg"
+            fileUrl={idDocUrl || null}
+            fileName={idDocName}
+            onUpload={async (file) => {
+              const url = await uploadFile(file);
+              setIdDocUrl(url);
+              setIdDocName(file.name);
+            }}
+            onRemove={() => {
+              setIdDocUrl('');
+              setIdDocName(null);
+            }}
+          />
+          <FileUploadZone
+            label={t('tenants.leaseAgreement')}
+            description={t('tenants.leaseAgreementHint')}
+            accept=".pdf,image/jpeg,image/png,image/jpg"
+            fileUrl={leaseUrl || null}
+            fileName={leaseName}
+            onUpload={async (file) => {
+              const url = await uploadFile(file);
+              setLeaseUrl(url);
+              setLeaseName(file.name);
+            }}
+            onRemove={() => {
+              setLeaseUrl('');
+              setLeaseName(null);
+            }}
+          />
+        </div>
       </div>
       <div className="flex gap-3 pt-2">
         <SubmitButton label={submitLabel} />
-        <Link href="/dashboard/tenants" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-600 dark:text-slate-300">Cancel</Link>
+        <Link href="/dashboard/tenants" className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-600 dark:text-slate-300">{t('common.cancel')}</Link>
       </div>
     </form>
   );
@@ -119,9 +240,10 @@ export function TenantForm({ users, units, tenant, action, submitLabel }: Tenant
 
 function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
+  const { t } = useLocale();
   return (
     <button type="submit" disabled={pending} className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-600 disabled:opacity-50">
-      {pending ? 'Saving…' : label}
+      {pending ? t('common.saving') : label}
     </button>
   );
 }

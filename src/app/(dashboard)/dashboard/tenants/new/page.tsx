@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { getUsersWithoutTenant } from '@/app/actions/tenants';
 import { prisma } from '@/lib/db';
 import { TenantForm } from '@/components/tenants/TenantForm';
-import { createTenant } from '@/app/actions/tenants';
 
 export default async function NewTenantPage() {
   const [users, buildingsWithUnits] = await Promise.all([
@@ -33,7 +32,7 @@ export default async function NewTenantPage() {
         </div>
       ) : (
         <div className="mt-6 max-w-2xl">
-          <TenantForm users={users} units={unitOptions} action={createTenant} submitLabel="Create tenant" />
+          <TenantForm users={users} units={unitOptions} submitLabel="Create tenant" />
         </div>
       )}
     </div>

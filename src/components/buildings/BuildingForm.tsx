@@ -2,7 +2,7 @@
 
 import { useFormStatus } from 'react-dom';
 import Link from 'next/link';
-import { createBuilding } from '@/app/actions/buildings';
+import { createBuilding, updateBuilding } from '@/app/actions/buildings';
 
 type BuildingData = {
   id: string;
@@ -19,16 +19,14 @@ type BuildingData = {
 
 type BuildingFormProps = {
   building?: BuildingData;
-  buildings?: { id: string; name: string }[];
-  formAction?: (formData: FormData) => void;
 };
 
-export function BuildingForm({ building, formAction }: BuildingFormProps) {
+export function BuildingForm({ building }: BuildingFormProps) {
   const isEditing = !!building;
 
   return (
     <form
-      action={isEditing ? formAction : (formData) => createBuilding(formData)}
+      action={isEditing ? (formData) => updateBuilding(building.id, formData) : createBuilding}
       className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800"
     >
       <div className="grid gap-4 sm:grid-cols-2">

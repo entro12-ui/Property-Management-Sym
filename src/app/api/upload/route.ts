@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
+import { logger } from '@/lib/logger';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
-const ALLOWED_TYPES = ['tenant-doc', 'receipt'] as const;
+const ALLOWED_TYPES = ['tenant-doc', 'receipt', 'expense'] as const;
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     const url = `/uploads/${type}/${name}`;
     return NextResponse.json({ url });
   } catch (e) {
-    console.error('Upload error:', e);
+    logger.error('File upload failed', e);
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
   }
 }

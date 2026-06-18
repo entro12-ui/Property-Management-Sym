@@ -1,7 +1,7 @@
 import { getUnit } from '@/app/actions/units';
 import { getBuildings } from '@/app/actions/buildings';
-import { updateUnit } from '@/app/actions/units';
 import { UnitForm } from '@/components/units/UnitForm';
+import { toNumber } from '@/lib/utils';
 
 export default async function EditUnitPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,14 +20,13 @@ export default async function EditUnitPage({ params }: { params: Promise<{ id: s
             unitNumber: unit.unitNumber,
             floorNumber: unit.floorNumber,
             unitType: unit.unitType,
-            sizeSqm: unit.sizeSqm,
-            rentAmount: unit.rentAmount,
+            sizeSqm: toNumber(unit.sizeSqm),
+            rentAmount: toNumber(unit.rentAmount),
             leaseStart: unit.leaseStart,
             leaseEnd: unit.leaseEnd,
             status: unit.status,
             notes: unit.notes,
           }}
-          formAction={(formData) => updateUnit(id, formData)}
         />
       </div>
     </div>

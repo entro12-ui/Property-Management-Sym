@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import type { AuthUser } from '@/lib/auth';
-import { ROLE_LABELS } from '@/types';
+import { useLocale } from '@/components/providers/LocaleProvider';
 import {
   LayoutDashboard,
   Building2,
@@ -16,53 +15,18 @@ import {
   BarChart3,
   Megaphone,
   Wrench,
-  LogOut,
   Menu,
   X,
+  DollarSign,
+  Receipt,
+  MessageSquare,
 } from 'lucide-react';
-import { useState } from 'react';
-
-// Admin nav grouped: Building Management, Unit Management, Tenant Management, Rent & Financial, then rest
-const adminNavSections: { title: string; items: { href: string; label: string; icon: typeof Building2 }[] }[] = [
-  {
-    title: 'Building Management',
-    items: [
-      { href: '/dashboard/buildings', label: 'Buildings', icon: Building2 },
-      { href: '/dashboard/units', label: 'Units', icon: DoorOpen },
-    ],
-  },
-  {
-    title: 'Tenant Management',
-    items: [{ href: '/dashboard/tenants', label: 'Tenants', icon: Users }],
-  },
-  {
-    title: 'Rent & Financial',
-    items: [
-      { href: '/dashboard/invoices', label: 'Invoices', icon: FileText },
-      { href: '/dashboard/payments', label: 'Payments', icon: CreditCard },
-      { href: '/dashboard/reports', label: 'Reports', icon: BarChart3 },
-    ],
-  },
-  {
-    title: '',
-    items: [
-      { href: '/dashboard/announcements', label: 'Announcements', icon: Megaphone },
-      { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
-    ],
-  },
-];
-
-const tenantNav = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/dashboard/invoices', label: 'My Invoices', icon: FileText },
-  { href: '/dashboard/payments', label: 'My Payments', icon: CreditCard },
-  { href: '/dashboard/announcements', label: 'Announcements', icon: Megaphone },
-  { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
-];
+import { useMemo, useState } from 'react';
 
 export function DashboardSidebar({ user }: { user: AuthUser }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const { t, labels } = useLocale();
 
   const isAdmin =
     user.role === 'SUPER_ADMIN' ||
@@ -70,11 +34,57 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
     user.role === 'PROPERTY_MANAGER' ||
     user.role === 'ACCOUNTANT';
 
+  const adminNavSections = useMemo(
+    () => [
+      {
+        title: t('nav.buildingManagement'),
+        items: [
+          { href: '/dashboard/buildings', label: t('nav.buildings'), icon: Building2 },
+          { href: '/dashboard/units', label: t('nav.units'), icon: DoorOpen },
+        ],
+      },
+      {
+        title: t('nav.tenantManagement'),
+        items: [{ href: '/dashboard/tenants', label: t('nav.tenants'), icon: Users }],
+      },
+      {
+        title: t('nav.rentFinancial'),
+        items: [
+          { href: '/dashboard/invoices', label: t('nav.invoices'), icon: FileText },
+          { href: '/dashboard/payments', label: t('nav.payments'), icon: CreditCard },
+          { href: '/dashboard/income', label: t('nav.income'), icon: DollarSign },
+          { href: '/dashboard/expenses', label: t('nav.expenses'), icon: Receipt },
+          { href: '/dashboard/reports', label: t('nav.reports'), icon: BarChart3 },
+          { href: '/dashboard/notifications', label: t('nav.smsLogs'), icon: MessageSquare },
+        ],
+      },
+      {
+        title: '',
+        items: [
+          { href: '/dashboard/announcements', label: t('nav.announcements'), icon: Megaphone },
+          { href: '/dashboard/maintenance', label: t('nav.maintenance'), icon: Wrench },
+        ],
+      },
+    ],
+    [t]
+  );
+
+  const tenantNav = useMemo(
+    () => [
+      { href: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+      { href: '/dashboard/invoices', label: t('nav.myInvoices'), icon: FileText },
+      { href: '/dashboard/payments', label: t('nav.myPayments'), icon: CreditCard },
+      { href: '/dashboard/announcements', label: t('nav.announcements'), icon: Megaphone },
+      { href: '/dashboard/maintenance', label: t('nav.maintenance'), icon: Wrench },
+    ],
+    [t]
+  );
+
   return (
     <>
       <button
         type="button"
-        className="fixed left-4 top-4 z-50 rounded-lg bg-slate-800 p-2 text-white lg:hidden"
+        className="fixed left-4 top-4 z-50 rounded-xl border border-emerald-700/50 bg-emerald-900 p-2.5 text-emerald-50 shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-800 lg:hidden"
         onClick={() => setOpen((o) => !o)}
         aria-label="Toggle menu"
       >
@@ -83,56 +93,58 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
 
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 border-r border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 lg:static lg:z-0',
+          'fixed inset-y-0 left-0 z-40 w-64 border-r border-emerald-800/50 bg-gradient-to-b from-emerald-950 via-teal-950 to-emerald-950 shadow-xl shadow-emerald-950/30 lg:static lg:z-0 lg:shadow-none',
           open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
         <div className="flex h-full flex-col">
-          <div className="border-b border-slate-200 p-4 dark:border-slate-700">
-            <Link href="/dashboard" className="font-semibold text-slate-900 dark:text-white">
-              Property Manager
+          <div className="border-b border-emerald-800/50 px-5 py-5">
+            <Link href="/dashboard" className="font-semibold text-white">
+              {t('common.appName')}
             </Link>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-              {ROLE_LABELS[user.role]}
+            <p className="mt-1 text-xs font-medium text-amber-300/90">
+              {labels.role[user.role]}
             </p>
           </div>
-          <nav className="flex-1 space-y-4 overflow-y-auto p-4">
+          <nav className="flex-1 space-y-5 overflow-y-auto p-4">
             {isAdmin ? (
               <>
                 <Link
                   href="/dashboard"
                   onClick={() => setOpen(false)}
                   className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
+                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
                     pathname === '/dashboard'
-                      ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
-                      : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'
+                      ? 'bg-amber-500 text-emerald-950 shadow-md shadow-amber-500/25'
+                      : 'text-emerald-100/80 hover:bg-white/10 hover:text-white'
                   )}
                 >
                   <LayoutDashboard className="h-5 w-5 shrink-0" />
-                  Dashboard
+                  {t('nav.dashboard')}
                 </Link>
                 {adminNavSections.map((section) => (
                   <div key={section.title || 'other'}>
                     {section.title && (
-                      <p className="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                      <p className="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-emerald-400/70">
                         {section.title}
                       </p>
                     )}
                     <div className="space-y-0.5">
                       {section.items.map((item) => {
                         const Icon = item.icon;
-                        const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'));
+                        const active =
+                          pathname === item.href ||
+                          (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'));
                         return (
                           <Link
                             key={item.href}
                             href={item.href}
                             onClick={() => setOpen(false)}
                             className={cn(
-                              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
+                              'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
                               active
-                                ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
-                                : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'
+                                ? 'bg-amber-500 text-emerald-950 shadow-md shadow-amber-500/25'
+                                : 'text-emerald-100/80 hover:bg-white/10 hover:text-white'
                             )}
                           >
                             <Icon className="h-5 w-5 shrink-0" />
@@ -146,8 +158,8 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
               </>
             ) : (
               <>
-                <p className="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-                  Tenant portal
+                <p className="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-emerald-400/70">
+                  {t('nav.tenantPortal')}
                 </p>
                 {tenantNav.map((item) => {
                   const Icon = item.icon;
@@ -158,10 +170,10 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
                       href={item.href}
                       onClick={() => setOpen(false)}
                       className={cn(
-                        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition',
+                        'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
                         active
-                          ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
-                          : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700'
+                          ? 'bg-amber-500 text-emerald-950 shadow-md shadow-amber-500/25'
+                          : 'text-emerald-100/80 hover:bg-white/10 hover:text-white'
                       )}
                     >
                       <Icon className="h-5 w-5 shrink-0" />
@@ -169,28 +181,12 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
                     </Link>
                   );
                 })}
-                <p className="mt-4 px-3 text-xs text-slate-500 dark:text-slate-400">
-                  Building management, units, tenants, and financial reports are available for Property Manager and Admin roles.
+                <p className="mt-4 px-3 text-xs text-emerald-300/60">
+                  {t('nav.tenantPortalHint')}
                 </p>
               </>
             )}
           </nav>
-          <div className="border-t border-slate-200 p-4 dark:border-slate-700">
-            <p className="truncate text-sm text-slate-600 dark:text-slate-400">
-              {user.fullName}
-            </p>
-            <p className="truncate text-xs text-slate-500 dark:text-slate-500">
-              {user.email}
-            </p>
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: '/login' })}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
-            >
-              <LogOut className="h-5 w-5" />
-              Sign out
-            </button>
-          </div>
         </div>
       </aside>
       {open && (

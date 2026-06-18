@@ -48,6 +48,10 @@ export function RecordPaymentForm({ invoiceId }: { invoiceId: string }) {
         {receiptUrl && <p className="mt-1 text-xs text-slate-500">Attached. <a href={receiptUrl} target="_blank" rel="noopener noreferrer" className="text-sky-500">View</a></p>}
       </div>
       <div>
+        <label htmlFor="receiptNumber" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Receipt number</label>
+        <input id="receiptNumber" name="receiptNumber" className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" placeholder="RCP-001" />
+      </div>
+      <div>
         <label htmlFor="reference" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Reference</label>
         <input id="reference" name="reference" className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" placeholder="Transaction ID, receipt #" />
       </div>

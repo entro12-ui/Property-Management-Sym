@@ -1,5 +1,4 @@
 import { getBuilding } from '@/app/actions/buildings';
-import { updateBuilding } from '@/app/actions/buildings';
 import { BuildingForm } from '@/components/buildings/BuildingForm';
 
 export default async function EditBuildingPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,7 +23,6 @@ export default async function EditBuildingPage({ params }: { params: Promise<{ i
             utilitiesInfo: building.utilitiesInfo,
             notes: building.notes,
           }}
-          formAction={(formData) => updateBuilding(id, formData)}
         />
       </div>
     </div>
