@@ -16,6 +16,7 @@ const statements = [
   `DO $$ BEGIN CREATE TYPE "ExpenseApprovalStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
   `DO $$ BEGIN CREATE TYPE "SmsNotificationType" AS ENUM ('RENT_REMINDER_15_DAYS', 'RENT_REMINDER_7_DAYS', 'RENT_DUE_TODAY', 'RENT_OVERDUE', 'ANNOUNCEMENT', 'MANUAL'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
   `DO $$ BEGIN CREATE TYPE "SmsStatus" AS ENUM ('PENDING', 'SENT', 'FAILED', 'SKIPPED'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN CREATE TYPE "SmsProvider" AS ENUM ('TWILIO', 'SMS_ETHIOPIA'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 
   // --- Extend existing enums ---
   `ALTER TYPE "UnitType" ADD VALUE IF NOT EXISTS 'ROOM'`,
@@ -103,6 +104,74 @@ const statements = [
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "SmsNotificationLog_pkey" PRIMARY KEY ("id")
   )`,
+  `CREATE TABLE IF NOT EXISTS "SmsSettings" (
+    "id" TEXT NOT NULL DEFAULT 'default',
+    "provider" "SmsProvider" NOT NULL DEFAULT 'SMS_ETHIOPIA',
+    "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "twilio_account_sid" TEXT,
+    "twilio_auth_token" TEXT,
+    "twilio_phone_number" TEXT,
+    "smsethiopia_api_key" TEXT,
+    "contact_phone" TEXT,
+    "owner_phone" TEXT,
+    "test_tenant_phone" TEXT,
+    "custom_message_template" TEXT,
+    "alert_days_15" BOOLEAN NOT NULL DEFAULT true,
+    "alert_days_7" BOOLEAN NOT NULL DEFAULT true,
+    "alert_due_today" BOOLEAN NOT NULL DEFAULT true,
+    "alert_overdue" BOOLEAN NOT NULL DEFAULT true,
+    "alert_hour" INTEGER NOT NULL DEFAULT 8,
+    "reminders_enabled" BOOLEAN NOT NULL DEFAULT true,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "SmsSettings_pkey" PRIMARY KEY ("id")
+  )`,
+  `ALTER TABLE "SmsSettings" ADD COLUMN IF NOT EXISTS "owner_phone" TEXT`,
+  `ALTER TABLE "SmsSettings" ADD COLUMN IF NOT EXISTS "test_tenant_phone" TEXT`,
+  `ALTER TABLE "SmsSettings" ADD COLUMN IF NOT EXISTS "custom_message_template" TEXT`,
+  `ALTER TABLE "SmsSettings" ADD COLUMN IF NOT EXISTS "alert_days_15" BOOLEAN DEFAULT true`,
+  `ALTER TABLE "SmsSettings" ADD COLUMN IF NOT EXISTS "alert_days_7" BOOLEAN DEFAULT true`,
+  `ALTER TABLE "SmsSettings" ADD COLUMN IF NOT EXISTS "alert_due_today" BOOLEAN DEFAULT true`,
+  `ALTER TABLE "SmsSettings" ADD COLUMN IF NOT EXISTS "alert_overdue" BOOLEAN DEFAULT true`,
+  `ALTER TABLE "SmsSettings" ADD COLUMN IF NOT EXISTS "alert_hour" INTEGER DEFAULT 8`,
+  `UPDATE "SmsSettings" SET "owner_phone" = "contact_phone" WHERE "owner_phone" IS NULL AND "contact_phone" IS NOT NULL`,
+
+  `DO $$ BEGIN CREATE TYPE "PaymentProofType" AS ENUM ('IMAGE', 'DOCUMENT', 'URL'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN CREATE TYPE "PaymentProofStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `CREATE TABLE IF NOT EXISTS "InvoicePaymentProof" (
+    "id" TEXT NOT NULL,
+    "invoice_id" TEXT NOT NULL,
+    "tenant_id" TEXT NOT NULL,
+    "proof_type" "PaymentProofType" NOT NULL,
+    "file_url" TEXT,
+    "file_name" TEXT,
+    "billing_url" TEXT,
+    "notes" TEXT,
+    "status" "PaymentProofStatus" NOT NULL DEFAULT 'PENDING',
+    "submitted_by_id" TEXT NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "InvoicePaymentProof_pkey" PRIMARY KEY ("id")
+  )`,
+  `DO $$ BEGIN
+    ALTER TABLE "InvoicePaymentProof" ADD CONSTRAINT "InvoicePaymentProof_invoice_id_fkey"
+      FOREIGN KEY ("invoice_id") REFERENCES "Invoice"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+    ALTER TABLE "InvoicePaymentProof" ADD CONSTRAINT "InvoicePaymentProof_tenant_id_fkey"
+      FOREIGN KEY ("tenant_id") REFERENCES "TenantProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+    ALTER TABLE "InvoicePaymentProof" ADD CONSTRAINT "InvoicePaymentProof_submitted_by_id_fkey"
+      FOREIGN KEY ("submitted_by_id") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `ALTER TABLE "InvoicePaymentProof" ALTER COLUMN "invoice_id" DROP NOT NULL`,
+  `ALTER TABLE "InvoicePaymentProof" ADD COLUMN IF NOT EXISTS "extracted_amount" DECIMAL(12,2)`,
+  `ALTER TABLE "InvoicePaymentProof" ADD COLUMN IF NOT EXISTS "extracted_payer_name" TEXT`,
+  `ALTER TABLE "InvoicePaymentProof" ADD COLUMN IF NOT EXISTS "extracted_payment_date" DATE`,
+  `ALTER TABLE "InvoicePaymentProof" ADD COLUMN IF NOT EXISTS "extracted_transaction_id" TEXT`,
+  `ALTER TABLE "InvoicePaymentProof" ADD COLUMN IF NOT EXISTS "extracted_raw_text" TEXT`,
+  `ALTER TABLE "InvoicePaymentProof" ADD COLUMN IF NOT EXISTS "extraction_status" TEXT DEFAULT 'PENDING'`,
+  `ALTER TABLE "InvoicePaymentProof" ADD COLUMN IF NOT EXISTS "income_id" TEXT`,
+
   `CREATE TABLE IF NOT EXISTS "ActivityLog" (
     "id" TEXT NOT NULL,
     "user_id" TEXT,

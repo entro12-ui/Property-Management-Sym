@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { invoiceWhereForUser } from '@/lib/building-scope';
+import { tenantInvoiceWhere, tenantCanAccessInvoice } from '@/lib/tenant-invoice-scope';
 import { getQuarterDates, quarterlyRentAmount } from '@/lib/billing-utils';
 import { logActivity } from '@/lib/activity-log';
 import { revalidatePath } from 'next/cache';
@@ -25,19 +26,21 @@ export async function getInvoices(filters?: { buildingId?: string; unitId?: stri
       },
       orderBy: [{ year: 'desc' }, { quarter: 'desc' }, { month: 'desc' }],
       include: {
-        unit: { include: { building: { select: { name: true } } } },
+        unit: { include: { building: { select: { name: true } }, tenant: { select: { id: true } } } },
         payments: true,
+        paymentProofs: { select: { id: true, status: true } },
       },
     });
   }
 
   if (user.tenantProfileId) {
     return prisma.invoice.findMany({
-      where: { tenantId: user.tenantProfileId },
+      where: tenantInvoiceWhere(user, filters),
       orderBy: [{ year: 'desc' }, { quarter: 'desc' }, { month: 'desc' }],
       include: {
-        unit: { include: { building: { select: { name: true } } } },
+        unit: { include: { building: { select: { name: true } }, tenant: { select: { id: true } } } },
         payments: true,
+        paymentProofs: { select: { id: true, status: true } },
       },
     });
   }
@@ -52,10 +55,14 @@ export async function getInvoice(id: string) {
     include: {
       unit: { include: { building: true, tenant: { include: { user: true } } } },
       payments: { include: { recordedBy: { select: { fullName: true } } } },
+      paymentProofs: {
+        orderBy: { createdAt: 'desc' },
+        include: { submittedBy: { select: { fullName: true } } },
+      },
     },
   });
   const isAdmin = ADMIN_ROLES.includes(user.role as (typeof ADMIN_ROLES)[number]);
-  if (!isAdmin && inv.tenantId !== user.tenantProfileId) {
+  if (!isAdmin && !tenantCanAccessInvoice(user, inv)) {
     throw new Error('Not authorized');
   }
   return inv;

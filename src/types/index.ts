@@ -15,6 +15,8 @@ import type {
   ExpenseApprovalStatus,
   SmsNotificationType,
   SmsStatus,
+  PaymentProofType,
+  PaymentProofStatus,
 } from '@prisma/client';
 
 export type {
@@ -34,7 +36,26 @@ export type {
   ExpenseApprovalStatus,
   SmsNotificationType,
   SmsStatus,
+  PaymentProofType,
+  PaymentProofStatus,
 };
+
+export type SmsSettingsView = {
+  enabled: boolean;
+  remindersEnabled: boolean;
+  ownerPhone: string | null;
+  testTenantPhone: string | null;
+  customMessageTemplate: string;
+  alertDays15: boolean;
+  alertDays7: boolean;
+  alertDueToday: boolean;
+  alertOverdue: boolean;
+  alertHour: number;
+  hasSmsethiopiaApiKey: boolean;
+};
+
+export const DEFAULT_SMS_MESSAGE_TEMPLATE =
+  'Dear {tenantName}, rent reminder for Room {roomNumber}: {amount} due {dueDate}. Contact: {ownerPhone}.';
 
 export const ROLE_LABELS: Record<Role, string> = {
   SUPER_ADMIN: 'Super Admin',
@@ -145,6 +166,18 @@ export const SMS_STATUS_LABELS: Record<SmsStatus, string> = {
   SENT: 'Sent',
   FAILED: 'Failed',
   SKIPPED: 'Skipped',
+};
+
+export const PAYMENT_PROOF_TYPE_LABELS: Record<PaymentProofType, string> = {
+  IMAGE: 'Image receipt',
+  DOCUMENT: 'PDF document',
+  URL: 'Billing link',
+};
+
+export const PAYMENT_PROOF_STATUS_LABELS: Record<PaymentProofStatus, string> = {
+  PENDING: 'Pending review',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
 };
 
 export const ANNOUNCEMENT_TYPE_LABELS: Record<AnnouncementType, string> = {

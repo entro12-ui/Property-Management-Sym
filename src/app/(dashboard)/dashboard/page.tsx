@@ -1,15 +1,15 @@
 import { requireAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { getFinancialSummary, getRecentActivity } from '@/app/actions/financial';
+import { getFinancialSummary, getRecentActivity, getMonthlyCashFlow } from '@/app/actions/financial';
 import { getBuildings } from '@/app/actions/buildings';
 import { formatCurrency } from '@/lib/utils';
 import { isDueWithin, isOverdue } from '@/lib/invoice-utils';
 import { formatPeriodLabel } from '@/lib/billing-utils';
+import { tenantInvoiceWhere } from '@/lib/tenant-invoice-scope';
 import { ROLE_LABELS, floorLabel } from '@/types';
 import { Building2, DoorOpen, FileText, Wrench, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { CashFlowChart } from '@/components/dashboard/FinancialCharts';
-import { getMonthlyCashFlow } from '@/app/actions/financial';
 
 export default async function DashboardPage() {
   const user = await requireAuth();
@@ -163,7 +163,7 @@ async function TenantDashboard({ user }: { user: { id: string; fullName: string;
     : null;
 
   const myInvoices = await prisma.invoice.findMany({
-    where: { tenantId: user.tenantProfileId ?? undefined },
+    where: tenantInvoiceWhere(user),
     orderBy: [{ year: 'desc' }, { quarter: 'desc' }],
     take: 5,
     include: { unit: true, payments: true },

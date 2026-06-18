@@ -1,6 +1,9 @@
 import { prisma } from '@/lib/db';
 import { formatCurrency } from '@/lib/utils';
 import { logger } from '@/lib/logger';
+import { deliverSms, isSmsConfigured } from '@/lib/sms-providers';
+import { resolveSmsConfig } from '@/lib/sms-settings';
+import { DEFAULT_SMS_MESSAGE_TEMPLATE } from '@/types';
 import type { SmsNotificationType } from '@prisma/client';
 
 type SendSmsParams = {
@@ -12,8 +15,7 @@ type SendSmsParams = {
 };
 
 /**
- * SMS delivery via Twilio when configured; otherwise marked SENT in dev without Twilio.
- * Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER in .env.local
+ * SMS delivery via SMS Ethiopia when configured; env vars are used as fallback.
  */
 export async function sendSms(params: SendSmsParams): Promise<{ success: boolean; logId: string }> {
   const log = await prisma.smsNotificationLog.create({
@@ -27,57 +29,68 @@ export async function sendSms(params: SendSmsParams): Promise<{ success: boolean
     },
   });
 
-  const sid = process.env.TWILIO_ACCOUNT_SID;
-  const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_PHONE_NUMBER;
+  const { config, enabled } = await resolveSmsConfig();
 
-  if (!sid || !token || !from) {
+  if (!enabled) {
+    await prisma.smsNotificationLog.update({
+      where: { id: log.id },
+      data: { status: 'SKIPPED', errorMessage: 'SMS notifications are disabled' },
+    });
+    return { success: false, logId: log.id };
+  }
+
+  if (!config || !isSmsConfigured(config)) {
     if (process.env.SMS_DEBUG === 'true') {
       logger.info(`SMS dev delivery to ${params.phone}: ${params.message.slice(0, 80)}…`);
     }
     await prisma.smsNotificationLog.update({
       where: { id: log.id },
-      data: { status: 'SENT', sentAt: new Date(), errorMessage: 'Dev mode – no Twilio configured' },
+      data: {
+        status: 'SENT',
+        sentAt: new Date(),
+        errorMessage: 'Dev mode – no SMS provider configured',
+      },
     });
     return { success: true, logId: log.id };
   }
 
-  try {
-    const auth = Buffer.from(`${sid}:${token}`).toString('base64');
-    const body = new URLSearchParams({ To: params.phone, From: from, Body: params.message });
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: body.toString(),
-    });
+  const result = await deliverSms(config, params.phone, params.message);
 
-    if (!res.ok) {
-      const errText = await res.text();
-      logger.warn('SMS delivery failed', { phone: params.phone, status: res.status, error: errText.slice(0, 200) });
-      await prisma.smsNotificationLog.update({
-        where: { id: log.id },
-        data: { status: 'FAILED', errorMessage: errText.slice(0, 500) },
-      });
-      return { success: false, logId: log.id };
-    }
-
+  if (!result.ok) {
     await prisma.smsNotificationLog.update({
       where: { id: log.id },
-      data: { status: 'SENT', sentAt: new Date() },
-    });
-    return { success: true, logId: log.id };
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Unknown error';
-    logger.error('SMS delivery error', { phone: params.phone, error: msg });
-    await prisma.smsNotificationLog.update({
-      where: { id: log.id },
-      data: { status: 'FAILED', errorMessage: msg },
+      data: { status: 'FAILED', errorMessage: result.error },
     });
     return { success: false, logId: log.id };
   }
+
+  await prisma.smsNotificationLog.update({
+    where: { id: log.id },
+    data: { status: 'SENT', sentAt: new Date() },
+  });
+  return { success: true, logId: log.id };
+}
+
+export function renderRentReminderMessage(
+  template: string,
+  params: {
+    tenantName: string;
+    roomNumber: string;
+    dueAmount: number;
+    dueDate: Date;
+    ownerPhone?: string;
+  }
+): string {
+  const dateStr = params.dueDate.toLocaleDateString('en-ET', { dateStyle: 'medium' });
+  const ownerPhone = params.ownerPhone ?? '';
+
+  return template
+    .replaceAll('{tenantName}', params.tenantName)
+    .replaceAll('{roomNumber}', params.roomNumber)
+    .replaceAll('{amount}', formatCurrency(params.dueAmount))
+    .replaceAll('{dueDate}', dateStr)
+    .replaceAll('{ownerPhone}', ownerPhone)
+    .replaceAll('{contactPhone}', ownerPhone);
 }
 
 export function buildRentReminderMessage(params: {
@@ -85,10 +98,9 @@ export function buildRentReminderMessage(params: {
   roomNumber: string;
   dueAmount: number;
   dueDate: Date;
-  contactPhone?: string;
+  ownerPhone?: string;
+  template?: string;
 }): string {
-  const dateStr = params.dueDate.toLocaleDateString('en-ET', { dateStyle: 'medium' });
-  let msg = `Dear ${params.tenantName}, rent reminder for Room ${params.roomNumber}: ${formatCurrency(params.dueAmount)} due ${dateStr}.`;
-  if (params.contactPhone) msg += ` Contact: ${params.contactPhone}.`;
-  return msg;
+  const template = params.template?.trim() || DEFAULT_SMS_MESSAGE_TEMPLATE;
+  return renderRentReminderMessage(template, params);
 }

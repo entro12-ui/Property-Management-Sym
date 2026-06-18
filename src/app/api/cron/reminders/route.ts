@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { sendSms, buildRentReminderMessage } from '@/lib/sms';
 import { daysUntilDue } from '@/lib/billing-utils';
+import {
+  getOwnerPhone,
+  getCustomMessageTemplate,
+  getReminderSchedule,
+  areRemindersEnabled,
+} from '@/lib/sms-settings';
 import { logger } from '@/lib/logger';
 import type { SmsNotificationType } from '@prisma/client';
 
@@ -19,12 +25,32 @@ async function alreadySent(invoiceId: string, type: SmsNotificationType): Promis
   return !!existing;
 }
 
+function resolveReminderType(
+  days: number,
+  schedule: Awaited<ReturnType<typeof getReminderSchedule>>
+): SmsNotificationType | null {
+  if (days === 15 && schedule.alertDays15) return 'RENT_REMINDER_15_DAYS';
+  if (days === 7 && schedule.alertDays7) return 'RENT_REMINDER_7_DAYS';
+  if (days === 0 && schedule.alertDueToday) return 'RENT_DUE_TODAY';
+  if (days < 0 && schedule.alertOverdue) return 'RENT_OVERDUE';
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   if (!authorize(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const contactPhone = process.env.BUILDING_CONTACT_PHONE ?? '';
+  if (!(await areRemindersEnabled())) {
+    return NextResponse.json({ sent: 0, skipped: 0, processed: 0, disabled: true });
+  }
+
+  const [ownerPhone, messageTemplate, schedule] = await Promise.all([
+    getOwnerPhone(),
+    getCustomMessageTemplate(),
+    getReminderSchedule(),
+  ]);
+
   const invoices = await prisma.invoice.findMany({
     where: { status: { in: ['SENT', 'PARTIAL', 'OVERDUE', 'DRAFT'] } },
     include: {
@@ -52,12 +78,8 @@ export async function POST(request: NextRequest) {
     }
 
     const days = daysUntilDue(inv.dueDate);
-    let type: SmsNotificationType | null = null;
-    if (days === 15) type = 'RENT_REMINDER_15_DAYS';
-    else if (days === 7) type = 'RENT_REMINDER_7_DAYS';
-    else if (days === 0) type = 'RENT_DUE_TODAY';
-    else if (days < 0) type = 'RENT_OVERDUE';
-    else {
+    const type = resolveReminderType(days, schedule);
+    if (!type) {
       skipped++;
       continue;
     }
@@ -72,7 +94,8 @@ export async function POST(request: NextRequest) {
       roomNumber: inv.unit.unitNumber,
       dueAmount: balance,
       dueDate: inv.dueDate,
-      contactPhone,
+      ownerPhone: ownerPhone ?? '',
+      template: messageTemplate,
     });
 
     const result = await sendSms({
@@ -89,5 +112,12 @@ export async function POST(request: NextRequest) {
     logger.important(`Rent reminders sent: ${sent} (${skipped} skipped)`);
   }
 
-  return NextResponse.json({ sent, skipped, processed: invoices.length });
+  return NextResponse.json({
+    sent,
+    skipped,
+    processed: invoices.length,
+    schedule: {
+      alertHour: schedule.alertHour,
+    },
+  });
 }

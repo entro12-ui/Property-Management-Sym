@@ -44,6 +44,7 @@ model User {
   recordedIncomes       Income[]
   approvedExpenses      Expense[]        @relation("ExpenseApprover")
   activityLogs          ActivityLog[]
+  paymentProofs         InvoicePaymentProof[]
 }
 
 // ============ BUILDINGS & UNITS ============
@@ -159,6 +160,7 @@ model TenantProfile {
   unitHistory       TenantUnitHistory[]
   incomes           Income[]
   smsLogs           SmsNotificationLog[]
+  paymentProofs     InvoicePaymentProof[]
 }
 
 model TenantDocument {
@@ -224,6 +226,44 @@ model Invoice {
   unit          Unit          @relation(fields: [unitId], references: [id], onDelete: Cascade)
   payments      Payment[]
   smsLogs       SmsNotificationLog[]
+  paymentProofs InvoicePaymentProof[]
+}
+
+enum PaymentProofType {
+  IMAGE
+  DOCUMENT
+  URL
+}
+
+enum PaymentProofStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model InvoicePaymentProof {
+  id                     String             @id @default(cuid())
+  invoiceId              String?            @map("invoice_id")
+  tenantId               String             @map("tenant_id")
+  proofType              PaymentProofType   @map("proof_type")
+  fileUrl                String?            @map("file_url")
+  fileName               String?            @map("file_name")
+  billingUrl             String?            @map("billing_url")
+  notes                  String?
+  status                 PaymentProofStatus @default(PENDING)
+  submittedById          String             @map("submitted_by_id")
+  extractedAmount        Decimal?           @map("extracted_amount") @db.Decimal(12, 2)
+  extractedPayerName     String?            @map("extracted_payer_name")
+  extractedPaymentDate   DateTime?          @map("extracted_payment_date") @db.Date
+  extractedTransactionId String?            @map("extracted_transaction_id")
+  extractedRawText       String?            @map("extracted_raw_text")
+  extractionStatus       String?            @default("PENDING") @map("extraction_status")
+  incomeId               String?            @map("income_id")
+  createdAt              DateTime           @default(now()) @map("created_at")
+
+  invoice                Invoice?           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  tenant                 TenantProfile      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  submittedBy            User               @relation(fields: [submittedById], references: [id], onDelete: Cascade)
 }
 
 enum PaymentMethod {
@@ -330,6 +370,23 @@ enum SmsStatus {
   SENT
   FAILED
   SKIPPED
+}
+
+model SmsSettings {
+  id                    String   @id @default("default")
+  enabled               Boolean  @default(true)
+  smsethiopiaApiKey     String?  @map("smsethiopia_api_key")
+  contactPhone          String?  @map("contact_phone")
+  ownerPhone            String?  @map("owner_phone")
+  testTenantPhone       String?  @map("test_tenant_phone")
+  customMessageTemplate String?  @map("custom_message_template") @db.Text
+  alertDays15           Boolean  @default(true) @map("alert_days_15")
+  alertDays7            Boolean  @default(true) @map("alert_days_7")
+  alertDueToday         Boolean  @default(true) @map("alert_due_today")
+  alertOverdue          Boolean  @default(true) @map("alert_overdue")
+  alertHour             Int      @default(8) @map("alert_hour")
+  remindersEnabled      Boolean  @default(true) @map("reminders_enabled")
+  updatedAt             DateTime @updatedAt @map("updated_at")
 }
 
 model SmsNotificationLog {

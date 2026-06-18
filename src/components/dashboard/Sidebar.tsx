@@ -20,8 +20,21 @@ import {
   DollarSign,
   Receipt,
   MessageSquare,
+  Settings,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+
+function isNavItemActive(pathname: string, href: string, allHrefs: string[]): boolean {
+  const matches =
+    pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`));
+  if (!matches) return false;
+
+  const matchingHrefs = allHrefs.filter(
+    (h) => pathname === h || (h !== '/dashboard' && pathname.startsWith(`${h}/`))
+  );
+  const bestMatch = matchingHrefs.sort((a, b) => b.length - a.length)[0];
+  return bestMatch === href;
+}
 
 export function DashboardSidebar({ user }: { user: AuthUser }) {
   const pathname = usePathname();
@@ -33,6 +46,9 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
     user.role === 'BUILDING_OWNER' ||
     user.role === 'PROPERTY_MANAGER' ||
     user.role === 'ACCOUNTANT';
+
+  const canManageSmsSettings =
+    user.role === 'SUPER_ADMIN' || user.role === 'BUILDING_OWNER';
 
   const adminNavSections = useMemo(
     () => [
@@ -56,6 +72,9 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
           { href: '/dashboard/expenses', label: t('nav.expenses'), icon: Receipt },
           { href: '/dashboard/reports', label: t('nav.reports'), icon: BarChart3 },
           { href: '/dashboard/notifications', label: t('nav.smsLogs'), icon: MessageSquare },
+          ...(canManageSmsSettings
+            ? [{ href: '/dashboard/notifications/settings', label: t('nav.smsSettings'), icon: Settings }]
+            : []),
         ],
       },
       {
@@ -66,7 +85,7 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
         ],
       },
     ],
-    [t]
+    [t, canManageSmsSettings]
   );
 
   const tenantNav = useMemo(
@@ -78,6 +97,11 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
       { href: '/dashboard/maintenance', label: t('nav.maintenance'), icon: Wrench },
     ],
     [t]
+  );
+
+  const adminNavHrefs = useMemo(
+    () => adminNavSections.flatMap((section) => section.items.map((item) => item.href)),
+    [adminNavSections]
   );
 
   return (
@@ -132,9 +156,7 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
                     <div className="space-y-0.5">
                       {section.items.map((item) => {
                         const Icon = item.icon;
-                        const active =
-                          pathname === item.href ||
-                          (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'));
+                        const active = isNavItemActive(pathname, item.href, adminNavHrefs);
                         return (
                           <Link
                             key={item.href}

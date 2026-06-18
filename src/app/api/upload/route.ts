@@ -3,9 +3,13 @@ import { getToken } from 'next-auth/jwt';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { logger } from '@/lib/logger';
+import {
+  paymentProofExtension,
+  validatePaymentProofFile,
+} from '@/lib/upload-utils';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
-const ALLOWED_TYPES = ['tenant-doc', 'receipt', 'expense'] as const;
+const ALLOWED_TYPES = ['tenant-doc', 'receipt', 'expense', 'payment-proof'] as const;
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,20 +19,34 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const type = (formData.get('type') as string) || 'tenant-doc';
+
     if (!file || !ALLOWED_TYPES.includes(type as (typeof ALLOWED_TYPES)[number])) {
       return NextResponse.json({ error: 'Missing file or invalid type' }, { status: 400 });
     }
 
+    if (type === 'payment-proof') {
+      const validationError = validatePaymentProofFile(file);
+      if (validationError) {
+        return NextResponse.json({ error: validationError }, { status: 400 });
+      }
+    }
+
     const dir = path.join(UPLOAD_DIR, type);
     await mkdir(dir, { recursive: true });
-    const ext = path.extname(file.name) || '.pdf';
+
+    const ext =
+      type === 'payment-proof'
+        ? paymentProofExtension(file)
+        : path.extname(file.name) || '.pdf';
+
+    const safeBase = file.name.replace(/[^\w.\-]+/g, '_').slice(0, 80);
     const name = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
     const filePath = path.join(dir, name);
     const bytes = await file.arrayBuffer();
     await writeFile(filePath, Buffer.from(bytes));
 
     const url = `/uploads/${type}/${name}`;
-    return NextResponse.json({ url });
+    return NextResponse.json({ url, fileName: file.name || safeBase });
   } catch (e) {
     logger.error('File upload failed', e);
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });

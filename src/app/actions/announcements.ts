@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { sendSms as deliverSms } from '@/lib/sms';
+import { getOwnerPhone } from '@/lib/sms-settings';
 import { revalidatePath } from 'next/cache';
 import type { AnnouncementType } from '@prisma/client';
 
@@ -84,10 +85,10 @@ export async function createAnnouncement(formData: FormData) {
       where: { unit: { buildingId }, tenantStatus: 'ACTIVE' },
       include: { user: true, unit: true },
     });
-    const contactPhone = process.env.BUILDING_CONTACT_PHONE ?? '';
+    const ownerPhone = (await getOwnerPhone()) ?? '';
     for (const t of tenants) {
       if (!t.user.phone) continue;
-      const msg = `${title}: ${body.slice(0, 140)}${contactPhone ? ` Contact: ${contactPhone}` : ''}`;
+      const msg = `${title}: ${body.slice(0, 140)}${ownerPhone ? ` Contact: ${ownerPhone}` : ''}`;
       await deliverSms({
         phone: t.user.phone,
         message: msg,

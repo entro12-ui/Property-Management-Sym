@@ -6,6 +6,10 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { formatPeriodLabel } from '@/lib/billing-utils';
 import { calculateLatePenalty, isOverdue } from '@/lib/invoice-utils';
 import { RecordPaymentForm } from '@/components/payments/RecordPaymentForm';
+import { TenantPaymentProofForm } from '@/components/invoices/TenantPaymentProofForm';
+import { PaymentProofList } from '@/components/invoices/PaymentProofList';
+import { MarkInvoiceSentButton } from '@/components/invoices/MarkInvoiceSentButton';
+import { serializePaymentProofsForClient } from '@/lib/serialize-client';
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER', 'ACCOUNTANT'];
 
@@ -13,6 +17,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const [invoice, user] = await Promise.all([getInvoice(id), getAuthUser()]);
   const isAdmin = user && ADMIN_ROLES.includes(user.role);
+  const isTenant = user?.role === 'TENANT';
 
   const totalPaid = invoice.payments.reduce((s, p) => s + Number(p.amount), 0);
   const baseAmount = Number(invoice.amount);
@@ -20,6 +25,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const computedPenalty = isOverdue(dueDate) ? calculateLatePenalty(baseAmount, dueDate) : 0;
   const latePenalty = Math.max(Number(invoice.latePenalty), computedPenalty);
   const outstanding = Math.max(0, baseAmount + latePenalty - totalPaid);
+  const paymentProofs = serializePaymentProofsForClient(invoice.paymentProofs);
 
   return (
     <div>
@@ -45,13 +51,41 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             <div><dt className="text-slate-500">Total paid</dt><dd>{formatCurrency(totalPaid)}</dd></div>
             {outstanding > 0 && <div><dt className="text-slate-500">Outstanding</dt><dd className="text-amber-600">{formatCurrency(outstanding)}</dd></div>}
           </dl>
+          {isAdmin && invoice.status === 'DRAFT' && (
+            <div className="mt-4 border-t border-slate-200 pt-4 dark:border-slate-600">
+              <p className="mb-2 text-sm text-slate-500">
+                This invoice is still a draft. Send it so the tenant can see it in My Invoices.
+              </p>
+              <MarkInvoiceSentButton invoiceId={id} />
+            </div>
+          )}
         </div>
+
         {isAdmin && (
           <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
             <h2 className="font-semibold text-slate-900 dark:text-white">Record payment</h2>
             <RecordPaymentForm invoiceId={id} />
           </div>
         )}
+
+        {isTenant && (
+          <div className="rounded-xl border border-emerald-200 bg-white p-5 dark:border-emerald-800 dark:bg-slate-800">
+            <h2 className="font-semibold text-slate-900 dark:text-white">Upload payment proof</h2>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              Submit your rent payment receipt (image/PDF) or a billing URL after you pay.
+            </p>
+            <div className="mt-4">
+              <TenantPaymentProofForm invoiceId={id} />
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-8">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Submitted payment proof</h2>
+        <div className="mt-4">
+          <PaymentProofList proofs={paymentProofs} isAdmin={!!isAdmin} />
+        </div>
       </div>
 
       <div className="mt-8">

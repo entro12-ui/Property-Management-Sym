@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { invoiceWhereForUser } from '@/lib/building-scope';
+import { tenantInvoiceWhere } from '@/lib/tenant-invoice-scope';
 import { logActivity } from '@/lib/activity-log';
 import { revalidatePath } from 'next/cache';
 import type { PaymentMethod } from '@prisma/client';
@@ -31,7 +32,7 @@ export async function getPayments(filters?: { invoiceId?: string }) {
   if (user.tenantProfileId) {
     return prisma.payment.findMany({
       where: {
-        invoice: { tenantId: user.tenantProfileId },
+        invoice: tenantInvoiceWhere(user),
         ...(filters?.invoiceId ? { invoiceId: filters.invoiceId } : {}),
       },
       orderBy: { paidAt: 'desc' },

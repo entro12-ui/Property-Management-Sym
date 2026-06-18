@@ -8,7 +8,7 @@ A professional Building Rental Management System built with **Next.js**, **Tailw
 - **Tenant Management** – Full profile, national ID, documents with versioning, room assignment history
 - **Quarterly Billing** – Generate quarterly rent invoices (monthly rent × 3), payment tracking, receipts
 - **Income & Expense Modules** – Categorized income/expenses, approval workflow, receipt attachments
-- **SMS Notifications** – Automated rent reminders (15d, 7d, due, overdue) via Twilio
+- **SMS Notifications** – Automated rent reminders (15d, 7d, due, overdue) via SMS Ethiopia
 - **Financial Dashboard** – Charts, net profit, occupancy, cash flow, PDF/Excel export
 - **Role-based access** – Super Admin, Building Owner, Property Manager, Accountant, Tenant
 
@@ -20,7 +20,7 @@ A professional Building Rental Management System built with **Next.js**, **Tailw
 cp .env.example .env.local
 ```
 
-Set `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`. Optionally configure Twilio and `CRON_SECRET` for SMS.
+Set `DATABASE_URL`, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`. Optionally configure SMS Ethiopia in the admin dashboard under **SMS Settings**, or via env vars (`SMSETIOPIA_API_KEY` / `SMS_ETHIOPIA_API_KEY`). Set `CRON_SECRET` for automated reminders.
 
 **Important:** Use a dedicated PostgreSQL database for this project.
 
@@ -69,7 +69,7 @@ curl -X POST http://localhost:3000/api/cron/reminders \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-Without Twilio credentials, SMS is logged to the console and marked sent in dev mode.
+Without SMS credentials, messages are logged and marked sent in dev mode. Configure live delivery in **Dashboard → SMS Settings**.
 
 ## Scripts
 

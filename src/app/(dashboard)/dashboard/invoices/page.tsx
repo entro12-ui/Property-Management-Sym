@@ -1,13 +1,25 @@
 import Link from 'next/link';
 import { getInvoices } from '@/app/actions/invoices';
+import { getAdminPaymentProofsForReview, getTenantPaymentProofs } from '@/app/actions/payment-proofs';
 import { getBuildings } from '@/app/actions/buildings';
-import { INVOICE_STATUS_LABELS } from '@/types';
+import { getAuthUser } from '@/lib/auth';
+import { INVOICE_STATUS_LABELS, PAYMENT_PROOF_STATUS_LABELS } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { formatPeriodLabel } from '@/lib/billing-utils';
 import { Plus } from 'lucide-react';
 import { GenerateMonthlyInvoicesForm } from '@/components/invoices/GenerateMonthlyInvoicesForm';
 import { GenerateQuarterlyInvoicesForm } from '@/components/invoices/GenerateQuarterlyInvoicesForm';
+import { TenantInvoicesPanel } from '@/components/invoices/TenantInvoicesPanel';
+import { AdminPaymentProofPanel } from '@/components/invoices/AdminPaymentProofPanel';
+import {
+  serializeInvoicesForClient,
+  serializePaymentProofsForClient,
+  serializeAdminProofsForClient,
+  toLinkableInvoices,
+} from '@/lib/serialize-client';
 import type { InvoiceStatus } from '@prisma/client';
+
+const ADMIN_ROLES = ['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER', 'ACCOUNTANT'];
 
 export default async function InvoicesPage({
   searchParams,
@@ -15,10 +27,44 @@ export default async function InvoicesPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status } = await searchParams;
-  const [invoices, buildings] = await Promise.all([
+  const user = await getAuthUser();
+  const isAdmin = user ? ADMIN_ROLES.includes(user.role) : false;
+
+  const [invoices, buildings, submittedProofs, pendingProofs] = await Promise.all([
     getInvoices({ status: status || undefined }),
-    getBuildings().catch(() => []),
+    isAdmin ? getBuildings().catch(() => []) : Promise.resolve([]),
+    isAdmin ? Promise.resolve([]) : getTenantPaymentProofs(),
+    isAdmin ? getAdminPaymentProofsForReview('PENDING') : Promise.resolve([]),
   ]);
+
+  const clientInvoices = serializeInvoicesForClient(invoices);
+  const clientSubmittedProofs = serializePaymentProofsForClient(submittedProofs);
+  const clientPendingProofs = serializeAdminProofsForClient(pendingProofs);
+  const linkableInvoices = toLinkableInvoices(invoices);
+
+  if (!isAdmin) {
+    return (
+      <div>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">My Invoices</h1>
+          <p className="mt-1 text-slate-500 dark:text-slate-400">
+            View your rent invoices and upload payment receipts or billing links
+          </p>
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Link href="/dashboard/invoices" className={`rounded-lg px-3 py-1.5 text-sm ${!status ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400'}`}>All</Link>
+          {(['SENT', 'PARTIAL', 'OVERDUE', 'PAID'] as InvoiceStatus[]).map((s) => (
+            <Link key={s} href={`/dashboard/invoices?status=${s}`} className={`rounded-lg px-3 py-1.5 text-sm ${status === s ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400'}`}>
+              {INVOICE_STATUS_LABELS[s]}
+            </Link>
+          ))}
+        </div>
+
+        <TenantInvoicesPanel invoices={clientInvoices} submittedProofs={clientSubmittedProofs} activeFilter={status} />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -38,6 +84,8 @@ export default async function InvoicesPage({
         <GenerateQuarterlyInvoicesForm />
         <GenerateMonthlyInvoicesForm />
       </div>
+
+      <AdminPaymentProofPanel proofs={clientPendingProofs} invoices={linkableInvoices} />
 
       <div className="mt-6 flex flex-wrap gap-2">
         <Link href="/dashboard/invoices" className={`rounded-lg px-3 py-1.5 text-sm ${!status ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400'}`}>All</Link>
@@ -59,13 +107,15 @@ export default async function InvoicesPage({
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Due date</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Proof</th>
                 <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-              {invoices.map((inv) => {
+              {clientInvoices.map((inv) => {
                 const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
                 const balance = Math.max(0, Number(inv.amount) - paid);
+                const pendingProofCount = inv.paymentProofs.filter((p) => p.status === 'PENDING').length;
                 return (
                   <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
                     <td className="px-4 py-3">
@@ -80,6 +130,15 @@ export default async function InvoicesPage({
                       )}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">{INVOICE_STATUS_LABELS[inv.status]}</td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm">
+                      {pendingProofCount > 0 ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                          {pendingProofCount} {PAYMENT_PROOF_STATUS_LABELS.PENDING.toLowerCase()}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right">
                       <Link href={`/dashboard/invoices/${inv.id}`} className="text-sky-500 hover:underline">View</Link>
                     </td>

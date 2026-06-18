@@ -57,7 +57,18 @@ export function LocaleProvider({
 
 export function useLocale() {
   const ctx = useContext(LocaleContext);
-  if (!ctx) throw new Error('useLocale must be used within LocaleProvider');
+  if (!ctx) {
+    // Can happen briefly during Fast Refresh full reloads (e.g. after locale file edits).
+    const locale = DEFAULT_LOCALE;
+    const dict = getTranslations(locale);
+    return {
+      locale,
+      setLocale: () => {},
+      dict,
+      t: (key: string) => translate(locale, key),
+      labels: getLabelMaps(locale),
+    };
+  }
   return ctx;
 }
 

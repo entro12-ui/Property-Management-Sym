@@ -102,6 +102,7 @@ export const en = {
     expenses: 'Expenses',
     reports: 'Reports',
     smsLogs: 'SMS Logs',
+    smsSettings: 'SMS Settings',
     announcements: 'Announcements',
     maintenance: 'Maintenance',
     myInvoices: 'My Invoices',

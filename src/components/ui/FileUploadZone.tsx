@@ -3,7 +3,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useLocale } from '@/components/providers/LocaleProvider';
-import { CheckCircle2, FileText, Loader2, UploadCloud, X, AlertCircle } from 'lucide-react';
+import { CheckCircle2, FileText, ImageIcon, Loader2, UploadCloud, X, AlertCircle } from 'lucide-react';
+import { isImageProofUrl } from '@/lib/upload-utils';
 
 export type FileUploadZoneProps = {
   label: string;
@@ -81,6 +82,7 @@ export function FileUploadZone({
   }
 
   const displayName = fileName ?? lastFile?.name;
+  const showImagePreview = Boolean(fileUrl && isImageProofUrl(fileUrl));
 
   return (
     <div className="space-y-2">
@@ -91,9 +93,20 @@ export function FileUploadZone({
 
       {hasFile && !uploading ? (
         <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 dark:border-emerald-900/50 dark:bg-emerald-950/30">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400">
-            <FileText className="h-5 w-5" />
-          </div>
+          {showImagePreview ? (
+            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-emerald-200 bg-white dark:border-emerald-800">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={fileUrl!} alt={displayName ?? 'Receipt preview'} className="h-full w-full object-cover" />
+            </div>
+          ) : (
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400">
+              {fileUrl && isImageProofUrl(fileUrl) ? (
+                <ImageIcon className="h-5 w-5" />
+              ) : (
+                <FileText className="h-5 w-5" />
+              )}
+            </div>
+          )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{displayName ?? 'Uploaded file'}</p>
             <p className="text-xs text-emerald-700 dark:text-emerald-400">{t('upload.readyToSave')}</p>

@@ -104,6 +104,7 @@ export const am: TranslationDict = {
     expenses: 'ወጪዎች',
     reports: 'ሪፖርቶች',
     smsLogs: 'ኤስኤምኤስ መዝገቦች',
+    smsSettings: 'ኤስኤምኤስ ቅንብሮች',
     announcements: 'ማስታወቂያዎች',
     maintenance: 'ጥገና',
     myInvoices: 'ደረሰኞቼ',
