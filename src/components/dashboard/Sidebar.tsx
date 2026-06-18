@@ -11,7 +11,6 @@ import {
   DoorOpen,
   Users,
   FileText,
-  CreditCard,
   BarChart3,
   Megaphone,
   Wrench,
@@ -21,6 +20,12 @@ import {
   Receipt,
   MessageSquare,
   Settings,
+  Bell,
+  User,
+  FolderOpen,
+  CalendarOff,
+  ClipboardCheck,
+  ShieldCheck,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -36,7 +41,7 @@ function isNavItemActive(pathname: string, href: string, allHrefs: string[]): bo
   return bestMatch === href;
 }
 
-export function DashboardSidebar({ user }: { user: AuthUser }) {
+export function DashboardSidebar({ user, alertCount = 0 }: { user: AuthUser; alertCount?: number }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const { t, labels } = useLocale();
@@ -49,6 +54,8 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
 
   const canManageSmsSettings =
     user.role === 'SUPER_ADMIN' || user.role === 'BUILDING_OWNER';
+
+  const isSuperAdmin = user.role === 'SUPER_ADMIN';
 
   const adminNavSections = useMemo(
     () => [
@@ -64,10 +71,13 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
         items: [{ href: '/dashboard/tenants', label: t('nav.tenants'), icon: Users }],
       },
       {
+        title: '',
+        items: [{ href: '/dashboard/leave-requests', label: t('nav.leaveRequests'), icon: CalendarOff }],
+      },
+      {
         title: t('nav.rentFinancial'),
         items: [
           { href: '/dashboard/invoices', label: t('nav.invoices'), icon: FileText },
-          { href: '/dashboard/payments', label: t('nav.payments'), icon: CreditCard },
           { href: '/dashboard/income', label: t('nav.income'), icon: DollarSign },
           { href: '/dashboard/expenses', label: t('nav.expenses'), icon: Receipt },
           { href: '/dashboard/reports', label: t('nav.reports'), icon: BarChart3 },
@@ -91,13 +101,18 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
   const tenantNav = useMemo(
     () => [
       { href: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
+      { href: '/dashboard/alerts', label: t('nav.myNotifications'), icon: Bell, badge: alertCount },
       { href: '/dashboard/invoices', label: t('nav.myInvoices'), icon: FileText },
-      { href: '/dashboard/payments', label: t('nav.myPayments'), icon: CreditCard },
+      { href: '/dashboard/documents', label: t('nav.myDocuments'), icon: FolderOpen },
       { href: '/dashboard/announcements', label: t('nav.announcements'), icon: Megaphone },
       { href: '/dashboard/maintenance', label: t('nav.maintenance'), icon: Wrench },
+      { href: '/dashboard/leave-request', label: t('nav.leaveRequest'), icon: CalendarOff },
+      { href: '/dashboard/profile', label: t('nav.myProfile'), icon: User },
     ],
-    [t]
+    [t, alertCount]
   );
+
+  const tenantNavHrefs = useMemo(() => tenantNav.map((item) => item.href), [tenantNav]);
 
   const adminNavHrefs = useMemo(
     () => adminNavSections.flatMap((section) => section.items.map((item) => item.href)),
@@ -146,8 +161,41 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
                   <LayoutDashboard className="h-5 w-5 shrink-0" />
                   {t('nav.dashboard')}
                 </Link>
+                <Link
+                  href="/dashboard/approvals"
+                  onClick={() => setOpen(false)}
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
+                    pathname === '/dashboard/approvals' || pathname.startsWith('/dashboard/approvals/')
+                      ? 'bg-amber-500 text-emerald-950 shadow-md shadow-amber-500/25'
+                      : 'text-emerald-100/80 hover:bg-white/10 hover:text-white'
+                  )}
+                >
+                  <ClipboardCheck className="h-5 w-5 shrink-0" />
+                  <span className="flex-1">{t('nav.pendingApprovals')}</span>
+                  {alertCount > 0 && (
+                    <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-semibold text-white">
+                      {alertCount > 99 ? '99+' : alertCount}
+                    </span>
+                  )}
+                </Link>
+                {isSuperAdmin && (
+                  <Link
+                    href="/dashboard/users"
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
+                      pathname === '/dashboard/users' || pathname.startsWith('/dashboard/users/')
+                        ? 'bg-amber-500 text-emerald-950 shadow-md shadow-amber-500/25'
+                        : 'text-emerald-100/80 hover:bg-white/10 hover:text-white'
+                    )}
+                  >
+                    <ShieldCheck className="h-5 w-5 shrink-0" />
+                    {t('nav.userManagement')}
+                  </Link>
+                )}
                 {adminNavSections.map((section) => (
-                  <div key={section.title || 'other'}>
+                  <div key={section.title || section.items[0]?.href}>
                     {section.title && (
                       <p className="mb-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-emerald-400/70">
                         {section.title}
@@ -185,7 +233,7 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
                 </p>
                 {tenantNav.map((item) => {
                   const Icon = item.icon;
-                  const active = pathname === item.href;
+                  const active = isNavItemActive(pathname, item.href, tenantNavHrefs);
                   return (
                     <Link
                       key={item.href}
@@ -199,7 +247,12 @@ export function DashboardSidebar({ user }: { user: AuthUser }) {
                       )}
                     >
                       <Icon className="h-5 w-5 shrink-0" />
-                      {item.label}
+                      <span className="flex-1">{item.label}</span>
+                      {item.badge != null && item.badge > 0 && (
+                        <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-semibold text-white">
+                          {item.badge > 99 ? '99+' : item.badge}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}

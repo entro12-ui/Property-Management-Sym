@@ -1,11 +1,15 @@
 import Link from 'next/link';
 import { getAnnouncements } from '@/app/actions/announcements';
+import { getAuthUser } from '@/lib/auth';
 import { ANNOUNCEMENT_TYPE_LABELS } from '@/types';
 import { formatDate } from '@/lib/utils';
 import { Plus } from 'lucide-react';
 
+const ADMIN_ROLES = ['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER'] as const;
+
 export default async function AnnouncementsPage() {
-  const announcements = await getAnnouncements();
+  const [announcements, user] = await Promise.all([getAnnouncements(), getAuthUser()]);
+  const isAdmin = user ? ADMIN_ROLES.includes(user.role as (typeof ADMIN_ROLES)[number]) : false;
 
   return (
     <div>
@@ -14,12 +18,14 @@ export default async function AnnouncementsPage() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Announcements</h1>
           <p className="mt-1 text-slate-500 dark:text-slate-400">Notices and updates</p>
         </div>
-        <Link
-          href="/dashboard/announcements/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-600"
-        >
-          <Plus className="h-4 w-4" /> New announcement
-        </Link>
+        {isAdmin && (
+          <Link
+            href="/dashboard/announcements/new"
+            className="inline-flex items-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-600"
+          >
+            <Plus className="h-4 w-4" /> New announcement
+          </Link>
+        )}
       </div>
 
       <div className="mt-6 space-y-4">

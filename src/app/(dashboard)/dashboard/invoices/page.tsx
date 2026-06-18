@@ -3,9 +3,9 @@ import { getInvoices } from '@/app/actions/invoices';
 import { getAdminPaymentProofsForReview, getTenantPaymentProofs } from '@/app/actions/payment-proofs';
 import { getBuildings } from '@/app/actions/buildings';
 import { getAuthUser } from '@/lib/auth';
-import { INVOICE_STATUS_LABELS, PAYMENT_PROOF_STATUS_LABELS } from '@/types';
+import { INVOICE_STATUS_LABELS, PAYMENT_PROOF_STATUS_LABELS, INVOICE_CATEGORY_LABELS } from '@/types';
 import { formatCurrency } from '@/lib/utils';
-import { formatPeriodLabel } from '@/lib/billing-utils';
+import { formatPeriodLabel, formatInvoiceLabel } from '@/lib/billing-utils';
 import { Plus } from 'lucide-react';
 import { GenerateMonthlyInvoicesForm } from '@/components/invoices/GenerateMonthlyInvoicesForm';
 import { GenerateQuarterlyInvoicesForm } from '@/components/invoices/GenerateQuarterlyInvoicesForm';
@@ -17,21 +17,43 @@ import {
   serializeAdminProofsForClient,
   toLinkableInvoices,
 } from '@/lib/serialize-client';
-import type { InvoiceStatus } from '@prisma/client';
+import type { InvoiceStatus, InvoiceCategory } from '@prisma/client';
 
-const ADMIN_ROLES = ['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER', 'ACCOUNTANT'];
+const ADMIN_ROLES = ['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER', 'ACCOUNTANT'] as const;
+
+const TENANT_CATEGORIES: { value: InvoiceCategory | ''; label: string }[] = [
+  { value: '', label: 'All bills' },
+  { value: 'RENT', label: 'Rent' },
+  { value: 'ELECTRICITY', label: 'Electricity' },
+  { value: 'WATER', label: 'Water' },
+];
+
+function tenantInvoiceHref(status?: string, category?: string) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (category) params.set('category', category);
+  const q = params.toString();
+  return q ? `/dashboard/invoices?${q}` : '/dashboard/invoices';
+}
 
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; category?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, category: categoryParam } = await searchParams;
+  const category =
+    categoryParam && ['RENT', 'ELECTRICITY', 'WATER'].includes(categoryParam)
+      ? (categoryParam as InvoiceCategory)
+      : undefined;
   const user = await getAuthUser();
-  const isAdmin = user ? ADMIN_ROLES.includes(user.role) : false;
+  const isAdmin = user ? ADMIN_ROLES.includes(user.role as (typeof ADMIN_ROLES)[number]) : false;
 
   const [invoices, buildings, submittedProofs, pendingProofs] = await Promise.all([
-    getInvoices({ status: status || undefined }),
+    getInvoices({
+      status: status || undefined,
+      category: isAdmin ? undefined : category,
+    }),
     isAdmin ? getBuildings().catch(() => []) : Promise.resolve([]),
     isAdmin ? Promise.resolve([]) : getTenantPaymentProofs(),
     isAdmin ? getAdminPaymentProofsForReview('PENDING') : Promise.resolve([]),
@@ -48,20 +70,51 @@ export default async function InvoicesPage({
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">My Invoices</h1>
           <p className="mt-1 text-slate-500 dark:text-slate-400">
-            View your rent invoices and upload payment receipts or billing links
+            Rent, electricity, and water bills — view invoices and upload payment receipts or billing links
           </p>
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Link href="/dashboard/invoices" className={`rounded-lg px-3 py-1.5 text-sm ${!status ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400'}`}>All</Link>
-          {(['SENT', 'PARTIAL', 'OVERDUE', 'PAID'] as InvoiceStatus[]).map((s) => (
-            <Link key={s} href={`/dashboard/invoices?status=${s}`} className={`rounded-lg px-3 py-1.5 text-sm ${status === s ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400'}`}>
-              {INVOICE_STATUS_LABELS[s]}
+        <div className="mt-6 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {TENANT_CATEGORIES.map(({ value, label }) => (
+              <Link
+                key={value || 'all'}
+                href={tenantInvoiceHref(status, value || undefined)}
+                className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                  (category ?? '') === value
+                    ? 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300'
+                    : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400'
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={tenantInvoiceHref(undefined, categoryParam)}
+              className={`rounded-lg px-3 py-1.5 text-sm ${!status ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400'}`}
+            >
+              All statuses
             </Link>
-          ))}
+            {(['SENT', 'PARTIAL', 'OVERDUE', 'PAID'] as InvoiceStatus[]).map((s) => (
+              <Link
+                key={s}
+                href={tenantInvoiceHref(s, categoryParam)}
+                className={`rounded-lg px-3 py-1.5 text-sm ${status === s ? 'bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-200' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400'}`}
+              >
+                {INVOICE_STATUS_LABELS[s]}
+              </Link>
+            ))}
+          </div>
         </div>
 
-        <TenantInvoicesPanel invoices={clientInvoices} submittedProofs={clientSubmittedProofs} activeFilter={status} />
+        <TenantInvoicesPanel
+          invoices={clientInvoices}
+          submittedProofs={clientSubmittedProofs}
+          activeStatusFilter={status}
+          activeCategoryFilter={categoryParam}
+        />
       </div>
     );
   }
@@ -103,6 +156,7 @@ export default async function InvoicesPage({
           <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
             <thead className="bg-slate-50 dark:bg-slate-700/50">
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Period / Room</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Due date</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">Amount</th>
@@ -118,8 +172,9 @@ export default async function InvoicesPage({
                 const pendingProofCount = inv.paymentProofs.filter((p) => p.status === 'PENDING').length;
                 return (
                   <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                    <td className="px-4 py-3 text-sm">{INVOICE_CATEGORY_LABELS[inv.category ?? 'RENT']}</td>
                     <td className="px-4 py-3">
-                      <span className="font-medium text-slate-900 dark:text-white">{formatPeriodLabel(inv)}</span>
+                      <span className="font-medium text-slate-900 dark:text-white">{formatInvoiceLabel(inv)}</span>
                       <span className="ml-2 text-slate-500">{inv.unit.building.name} – Room {inv.unit.unitNumber}</span>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">{new Date(inv.dueDate).toLocaleDateString()}</td>

@@ -1,42 +1,164 @@
 # Property Management System
 
-A professional Building Rental Management System built with **Next.js**, **Tailwind CSS**, **PostgreSQL**, and **NextAuth.js**.
+A professional **building rental management platform** for multi-floor commercial and residential properties. Built with **Next.js 16**, **React 19**, **Tailwind CSS 4**, **PostgreSQL**, **Prisma**, and **NextAuth.js**.
+
+Manage tenants, rooms, quarterly rent, utility bills, expenses, SMS reminders, and financial reports in one secure dashboard — with a dedicated **tenant portal** for invoices, payment proofs, maintenance, and leave requests.
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js App Router, React 19, Tailwind CSS 4, Recharts |
+| Backend | Next.js Server Actions, NextAuth.js |
+| Database | PostgreSQL + Prisma ORM |
+| Auth | Email/password (bcrypt), role-based access |
+| SMS | SMS Ethiopia API (configurable in dashboard) |
+| Receipt OCR | OpenAI Vision + CBE text parser (optional `tesseract` CLI fallback) |
+| i18n | English + Amharic (አማርኛ) |
+
+---
 
 ## Features
 
-- **Building & Room Management** – Ground floor + 8 floors, ~50 rooms, floor-wise grid view, occupancy tracking
-- **Tenant Management** – Full profile, national ID, documents with versioning, room assignment history
-- **Quarterly & Monthly Billing** – Generate rent invoices, payment tracking, receipts
-- **Tenant Payment Proof Upload** – Tenants upload CBE/mobile banking receipt screenshots (JPG, PNG, PDF) or billing URLs from **My Invoices**
-- **Payment Proof Review (Admin)** – Review queue on **Dashboard → Invoices**, link submissions to invoices, approve/reject, auto-record income
-- **Receipt OCR (CBE)** – Extracts total ETB debited, payer name, payment date, and transaction ID from Commercial Bank of Ethiopia receipt screenshots
-- **Income & Expense Modules** – Categorized income/expenses, approval workflow, receipt attachments
-- **SMS Notifications** – Automated rent reminders (15d, 7d, due, overdue) via SMS Ethiopia
-- **Financial Dashboard** – Charts, net profit, occupancy, cash flow, PDF/Excel export
-- **Role-based access** – Super Admin, Building Owner, Property Manager, Accountant, Tenant
+### Building & units
+
+- Multi-building support with photos, floor plans, and occupancy overview
+- Room/unit management by floor with grid view and status (Vacant, Occupied, Reserved, Maintenance)
+- Quarterly rent due date per unit (drives invoice due dates and SMS reminders)
+- Delete buildings and units from list pages (with confirmation)
+
+### Tenant management
+
+- Full tenant profiles, national ID, documents with versioning, room assignment history
+- Assign users to units; track lease dates and move-in / move-out
+- Tenant document library (lease, ID, agreements)
+
+### Billing & invoices
+
+- **Monthly and quarterly** rent invoice generation (bulk or per unit)
+- Invoice categories: **Rent**, **Electricity**, **Water**
+- Invoice lifecycle: Draft → Sent → Partial / Paid / Overdue
+- Record payments on invoice detail pages (admin)
+- Utility bills appear in the tenant **My Invoices** page (no separate utility page)
+
+### Payment proof workflow
+
+- Tenants upload CBE/mobile banking receipts (JPG, PNG, PDF) or billing URLs from **My Invoices**
+- **Receipt OCR (CBE)** extracts total ETB debited, payer name, payment date, and transaction ID
+- Admins review proofs on **Invoices → Payment proof review** or **Pending approvals**
+- Approve → auto-records **Rental** income, payment on invoice, and updates invoice status
+- Sample receipts for testing: `Invoices-samples/` (`invoice 1.jpg` … `invoice 4.jpg`)
+
+### Pending approvals (admin)
+
+Central hub at **Dashboard → Pending approvals** with badge notifications:
+
+| Request type | Admin action |
+|--------------|--------------|
+| Payment proof | Scan receipt, approve/reject, link to invoice |
+| Leave request | Approve/reject with optional admin notes |
+| Maintenance | Accept (In Progress) or reject (Cancelled) |
+
+Building Owners and Property Managers see leave and maintenance; Accountants see payment proofs only.
+
+### Leave requests
+
+- Tenants submit move-out requests with **2-month minimum notice**
+- Admins review at **Leave requests** or **Pending approvals**
+- Approval sets tenant move-out date on profile
+
+### Maintenance
+
+- Tenants and admins create maintenance requests with urgency levels
+- Status workflow: Pending → In Progress → Completed / Cancelled
+- Admin assignment, cost tracking, and detail pages
+
+### Income & expenses
+
+- Income types: Rental, Parking, Advance Payment, Deposit, Additional Charge, Other
+- Expense categories with approval workflow and receipt attachments
+- Financial dashboard: YTD income, net profit, occupancy, cash-flow chart
+
+### SMS notifications
+
+- Automated **rent-only** reminders: 15 days, 7 days, due today, overdue
+- Announcement SMS to tenants (optional)
+- SMS log viewer and settings (Super Admin / Building Owner)
+- Cron endpoint: `/api/cron/reminders`
+
+### Reports & export
+
+- PDF and Excel financial reports from **Dashboard → Reports**
+- Tenant roster export
+- API: `GET /api/reports/export?type=financial&format=pdf&year=2026`
+
+### Tenant portal
+
+| Page | Purpose |
+|------|---------|
+| Dashboard | Room info, lease schedule, upcoming rent, payment proof status |
+| Notifications | Rent alerts, proof updates, SMS history, announcements |
+| My Invoices | Rent + electricity + water bills, upload payment proof |
+| My Documents | Lease and ID documents on file |
+| Maintenance | Submit and track repair requests |
+| Leave request | Request to vacate (2-month notice) |
+| My Profile | Contact details for SMS reminders |
+
+### User management (Super Admin)
+
+- **Dashboard → User management** — create accounts, assign roles, reset passwords
+- Roles: Super Admin, Building Owner, Property Manager, Accountant, Tenant
+- CLI fallback: `npm run promote-admin -- your@email.com`
+
+### Localization
+
+- Language switcher in dashboard header (English / Amharic)
+- Flag icons and translated navigation labels
+
+---
+
+## User roles
+
+| Role | Access summary |
+|------|----------------|
+| **Super Admin** | Full system access, user management, SMS settings |
+| **Building Owner** | Own buildings, finances, SMS settings, approvals |
+| **Property Manager** | Assigned buildings, tenants, invoices, approvals |
+| **Accountant** | Invoices, income, expenses, reports, payment proof review |
+| **Tenant** | Tenant portal only (invoices, proofs, maintenance, profile) |
+
+---
 
 ## Setup
 
 ### 1. Environment variables
 
+Create `.env.local` in the project root:
+
 ```bash
-cp .env.example .env.local
+# Required
+DATABASE_URL="postgresql://user:password@host:5432/dbname"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="generate-a-long-random-string"
+
+# Cron protection
+CRON_SECRET="your-cron-secret"
+
+# SMS (optional — can also configure in Dashboard → SMS Settings)
+SMSETIOPIA_API_KEY=""
+# or SMS_ETHIOPIA_API_KEY=""
+
+# Receipt OCR (recommended for CBE screenshot scanning)
+OPENAI_API_KEY=""
 ```
 
-| Variable | Purpose |
-|----------|---------|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `NEXTAUTH_URL` | App URL (e.g. `http://localhost:3000`) |
-| `NEXTAUTH_SECRET` | NextAuth session secret |
-| `CRON_SECRET` | Protects `/api/cron/reminders` |
-| `SMSETIOPIA_API_KEY` or `SMS_ETHIOPIA_API_KEY` | SMS Ethiopia API key (optional; can configure in dashboard) |
-| `OPENAI_API_KEY` | Receipt OCR via OpenAI Vision (recommended for CBE screenshot scanning) |
+Configure SMS templates and owner phone in **Dashboard → SMS Settings**.
 
-Configure SMS in **Dashboard → SMS Settings** (message template, owner phone, alert schedule).
+> **Note:** Use a dedicated PostgreSQL database. On Render free tier, wake the database from the Render dashboard if connections fail.
 
-**Important:** Use a dedicated PostgreSQL database for this project. On Render free tier, wake the database from the Render dashboard if connections fail.
-
-### 2. Database
+### 2. Install & database
 
 ```bash
 npm install
@@ -44,7 +166,7 @@ npx prisma generate
 npm run db:sync
 ```
 
-`db:sync` safely adds new columns/tables **without** dropping unrelated data (use this instead of `db push` on shared databases).
+`db:sync` safely adds new columns and tables **without** dropping unrelated data (preferred on shared databases).
 
 For a **fresh dedicated database** only:
 
@@ -52,7 +174,7 @@ For a **fresh dedicated database** only:
 npx prisma db push
 ```
 
-### 3. Seed the default building (50 rooms)
+### 3. Seed sample building
 
 ```bash
 npm run db:seed
@@ -66,88 +188,150 @@ Creates **Central Tower** with ground floor + 8 floors (~50 rooms).
 npm run dev
 ```
 
-Sign up at `/signup`, then promote to admin:
+1. Sign up at `/signup`
+2. Promote your account to Super Admin:
 
 ```bash
 npm run promote-admin -- your@email.com
 ```
 
-Create a tenant user separately (or assign an existing user the Tenant role) to test payment proof upload.
+3. Sign out and sign back in to see the admin menu
+4. Create staff users via **Dashboard → User management**, or assign the Tenant role and link a tenant profile to a unit
 
 ### 5. SMS reminders (cron)
 
-Schedule daily:
+Schedule daily (production) or run manually:
 
 ```bash
+npm run sms:reminders
+# or
 curl -X POST http://localhost:3000/api/cron/reminders \
   -H "Authorization: Bearer $CRON_SECRET"
 ```
 
-Without SMS credentials, messages are logged and marked sent in dev mode. Configure live delivery in **Dashboard → SMS Settings**.
+Without SMS credentials, messages are logged in dev mode. Only **rent** invoices trigger automated reminders.
 
-## Payment proof workflow
+---
 
-Sample CBE receipt images for testing live in `Invoices-samples/` (`invoice 1.jpg` … `invoice 4.jpg`).
+## Key workflows
 
-### Tenant (My Invoices)
+### Payment proof (tenant → admin)
 
-1. Go to **Dashboard → My Invoices**
-2. Upload a receipt image/PDF or paste a billing URL
-3. Optionally link to a rent invoice, or submit as a **general payment**
-4. Track status under **Your submitted proofs** (Pending review → Approved / Rejected)
+**Tenant — My Invoices**
 
-### Admin (Invoices → Payment proof review)
+1. Open **Dashboard → My Invoices**
+2. Select an invoice (or submit a general payment)
+3. Upload receipt image/PDF or paste a billing URL
+4. Track status under submitted proofs (Pending → Approved / Rejected)
 
-1. Go to **Dashboard → Invoices** — pending proofs appear in the **Payment proof review** section
-2. Click **Scan receipt** to extract amount, payer name, date, and transaction ID (requires `OPENAI_API_KEY`, or system `tesseract` CLI if installed)
+**Admin — review**
+
+1. **Pending approvals** (badge in sidebar/header), or **Invoices → Payment proof review**
+2. Click **Scan receipt** to extract amount, payer, date, transaction ID
 3. Edit fields manually if needed → **Save details**
-4. For general submissions: **Link to invoice** (select period/room)
-5. Send draft invoices to tenants via **Send invoice to tenant** on the invoice detail page
-6. Click **Approve & record income** — creates a **Rental** income entry, records payment on the linked invoice, and updates invoice status (Paid/Partial)
+4. For unlinked proofs: **Link to invoice**
+5. **Approve & record income** — creates income entry, records payment, updates invoice status
 
-### Receipt extraction
+### Leave request
 
-The parser targets **Commercial Bank of Ethiopia** mobile banking confirmation screenshots and reads:
+1. Tenant: **Leave request** → pick move-out date (≥ 2 months ahead)
+2. Admin: **Pending approvals** or **Leave requests** → Approve / Reject
 
-- **Total amount debited** (includes fees when present, e.g. `Total Amount Debited ETB …`)
-- **Payer name** (e.g. `NATNAEL MEKURIA ZEWDU`)
-- **Payment date** (e.g. `22-May-2026`)
-- **Transaction ID** (e.g. `FT261423RG5T`)
+### Maintenance
+
+1. Tenant: **Maintenance → New request**
+2. Admin: **Pending approvals** or **Maintenance** → accept, assign, update status
+
+### Invoicing
+
+1. **Invoices → New invoice** (rent, electricity, or water)
+2. Or bulk generate: monthly / quarterly forms on the Invoices page
+3. Open invoice detail → **Send invoice to tenant** (Draft → Sent)
+4. Tenant sees it under **My Invoices**
+
+---
+
+## Receipt extraction (CBE)
+
+Targets **Commercial Bank of Ethiopia** mobile banking confirmation screenshots:
+
+| Field | Example |
+|-------|---------|
+| Total debited | ETB 5,668.40 |
+| Payer name | NATNAEL MEKURIA ZEWDU |
+| Payment date | 22-May-2026 |
+| Transaction ID | FT261423RG5T |
 
 OCR priority:
 
-1. OpenAI Vision (`OPENAI_API_KEY` in `.env`)
+1. OpenAI Vision (`OPENAI_API_KEY`)
 2. System `tesseract` CLI (`sudo apt install tesseract-ocr`), if installed
+3. Manual entry by admin before approval
 
-If OCR is unavailable, admins can enter details manually before approval.
+Test the text parser without OCR:
+
+```bash
+node scripts/test-receipt-parser.mjs
+```
+
+Validate sample uploads:
+
+```bash
+node scripts/verify-payment-proof-upload.mjs
+```
+
+---
 
 ## Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start dev server |
+| `npm run dev` | Start dev server (runs `prisma generate` first) |
 | `npm run build` | Production build |
-| `npm run db:sync` | Apply schema changes safely (payment proof extraction fields, etc.) |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run db:sync` | Apply incremental schema changes safely |
 | `npm run db:seed` | Seed Central Tower building |
-| `npm run promote-admin` | Promote user to Super Admin |
 | `npm run db:studio` | Open Prisma Studio |
-| `node scripts/verify-payment-proof-upload.mjs` | Validate sample receipt JPGs and upload path |
-| `node scripts/test-receipt-parser.mjs` | Test CBE receipt text parser (no OCR) |
+| `npm run promote-admin` | Promote user to Super Admin by email |
+| `npm run sms:reminders` | Trigger rent reminder cron locally |
 
-## Export reports
+---
 
-From `/dashboard/reports`:
+## Project structure
 
-- **Excel/PDF** financial reports via export buttons
-- **Tenant roster** export
+```
+src/
+├── app/
+│   ├── (auth)/          # Login, signup
+│   ├── (dashboard)/     # Protected dashboard routes
+│   └── api/             # Cron, upload, report export
+├── components/          # UI by domain (invoices, tenant, admin, …)
+├── lib/                 # DB, auth, SMS, billing, serialization
+├── i18n/                # English + Amharic translations
+└── types/               # Shared labels and enums
 
-API: `GET /api/reports/export?type=financial&format=pdf&year=2026`
+prisma/schema.prisma     # Database models
+scripts/                 # db:sync, seed, promote-admin, receipt tests
+Invoices-samples/        # Sample CBE receipt images for testing
+```
+
+---
 
 ## Troubleshooting
 
 | Issue | What to do |
 |-------|------------|
 | `Can't reach database server` (Render) | Wake Postgres on Render dashboard; verify `DATABASE_URL` |
+| `Decimal objects are not supported` in dev | Restart dev server after updates; run `rm -rf .next && npm run dev` |
 | Receipt scan finds nothing | Set `OPENAI_API_KEY`, or enter amount/details manually |
-| Tenant sees no invoices | Admin must generate/send invoices (Draft → Sent) |
-| Stale dev errors after updates | Stop dev server, delete `.next`, run `npm run dev` again |
+| Tenant sees no invoices | Admin must generate invoices and **Send invoice to tenant** (Draft → Sent) |
+| Admin menu missing after promote | Sign out and sign back in |
+| Stale errors after schema change | Run `npm run db:sync`, `npx prisma generate`, restart dev server |
+| SMS not delivered | Check **SMS Settings** and API key; review **SMS Logs** |
+
+---
+
+## License
+
+Private project — all rights reserved.

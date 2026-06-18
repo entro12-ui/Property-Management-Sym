@@ -34,6 +34,9 @@ const statements = [
   `ALTER TYPE "DocumentType" ADD VALUE IF NOT EXISTS 'LEASE_AGREEMENT'`,
   `ALTER TYPE "DocumentType" ADD VALUE IF NOT EXISTS 'RENTAL_AGREEMENT'`,
   `ALTER TYPE "DocumentType" ADD VALUE IF NOT EXISTS 'OTHER'`,
+  `ALTER TYPE "IncomeType" ADD VALUE IF NOT EXISTS 'PARKING'`,
+  `DO $$ BEGIN CREATE TYPE "InvoiceCategory" AS ENUM ('RENT', 'ELECTRICITY', 'WATER'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN CREATE TYPE "LeaveRequestStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'); EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 
   // --- TenantProfile ---
   `ALTER TABLE "TenantProfile" ADD COLUMN IF NOT EXISTS "address" TEXT`,
@@ -41,12 +44,24 @@ const statements = [
   `ALTER TABLE "TenantProfile" ADD COLUMN IF NOT EXISTS "occupation" TEXT`,
   `ALTER TABLE "TenantProfile" ADD COLUMN IF NOT EXISTS "tenant_status" "TenantStatus" DEFAULT 'ACTIVE'`,
 
+  // --- Building ---
+  `ALTER TABLE "Building" ADD COLUMN IF NOT EXISTS "number_of_rooms" INTEGER`,
+  `ALTER TABLE "Building" ADD COLUMN IF NOT EXISTS "photo_url" TEXT`,
+  `ALTER TABLE "Building" ADD COLUMN IF NOT EXISTS "area_hectares" DECIMAL(10,4)`,
+  `ALTER TABLE "Building" ADD COLUMN IF NOT EXISTS "has_security_room" BOOLEAN DEFAULT false`,
+  `ALTER TABLE "Building" ADD COLUMN IF NOT EXISTS "year_built" INTEGER`,
+  `ALTER TABLE "Building" ALTER COLUMN "country" SET DEFAULT 'Ethiopia'`,
+
+  // --- Unit ---
+  `ALTER TABLE "Unit" ADD COLUMN IF NOT EXISTS "quarterly_rent_due_date" DATE`,
+
   // --- Invoice ---
   `ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "period_type" "BillingPeriod" DEFAULT 'QUARTERLY'`,
   `ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "quarter" INTEGER`,
   `ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "period_start" DATE`,
   `ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "period_end" DATE`,
   `ALTER TABLE "Invoice" ALTER COLUMN "month" DROP NOT NULL`,
+  `ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "category" "InvoiceCategory" DEFAULT 'RENT'`,
 
   // --- Payment ---
   `ALTER TABLE "Payment" ADD COLUMN IF NOT EXISTS "receipt_number" TEXT`,
@@ -183,6 +198,21 @@ const statements = [
     CONSTRAINT "ActivityLog_pkey" PRIMARY KEY ("id")
   )`,
 
+  `CREATE TABLE IF NOT EXISTS "LeaveRequest" (
+    "id" TEXT NOT NULL,
+    "tenant_id" TEXT NOT NULL,
+    "unit_id" TEXT NOT NULL,
+    "requested_move_out_date" DATE NOT NULL,
+    "reason" TEXT,
+    "status" "LeaveRequestStatus" NOT NULL DEFAULT 'PENDING',
+    "reviewed_by_id" TEXT,
+    "admin_notes" TEXT,
+    "reviewed_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "LeaveRequest_pkey" PRIMARY KEY ("id")
+  )`,
+
   // --- Foreign keys (ignore if exist) ---
   `DO $$ BEGIN
     ALTER TABLE "TenantDocument" ADD CONSTRAINT "TenantDocument_tenant_id_fkey"
@@ -227,6 +257,18 @@ const statements = [
   `DO $$ BEGIN
     ALTER TABLE "ActivityLog" ADD CONSTRAINT "ActivityLog_user_id_fkey"
       FOREIGN KEY ("user_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+    ALTER TABLE "LeaveRequest" ADD CONSTRAINT "LeaveRequest_tenant_id_fkey"
+      FOREIGN KEY ("tenant_id") REFERENCES "TenantProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+    ALTER TABLE "LeaveRequest" ADD CONSTRAINT "LeaveRequest_unit_id_fkey"
+      FOREIGN KEY ("unit_id") REFERENCES "Unit"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+    ALTER TABLE "LeaveRequest" ADD CONSTRAINT "LeaveRequest_reviewed_by_id_fkey"
+      FOREIGN KEY ("reviewed_by_id") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 
   // Backfill tenant_status for existing rows

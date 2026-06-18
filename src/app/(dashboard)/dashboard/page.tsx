@@ -2,12 +2,14 @@ import { requireAuth } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { getFinancialSummary, getRecentActivity, getMonthlyCashFlow } from '@/app/actions/financial';
 import { getBuildings } from '@/app/actions/buildings';
-import { formatCurrency } from '@/lib/utils';
+import { getMyPaymentProofSummary } from '@/app/actions/tenant-portal';
+import { getAdminPendingCount } from '@/app/actions/admin-notifications';
+import { formatCurrency, formatDate } from '@/lib/utils';
 import { isDueWithin, isOverdue } from '@/lib/invoice-utils';
-import { formatPeriodLabel } from '@/lib/billing-utils';
+import { formatPeriodLabel, formatQuarterlySchedule } from '@/lib/billing-utils';
 import { tenantInvoiceWhere } from '@/lib/tenant-invoice-scope';
-import { ROLE_LABELS, floorLabel } from '@/types';
-import { Building2, DoorOpen, FileText, Wrench, DollarSign, TrendingUp, AlertTriangle } from 'lucide-react';
+import { ROLE_LABELS, floorLabel, INVOICE_STATUS_LABELS, PAYMENT_PROOF_STATUS_LABELS } from '@/types';
+import { Building2, DoorOpen, FileText, Wrench, DollarSign, TrendingUp, AlertTriangle, Bell, ClipboardCheck } from 'lucide-react';
 import Link from 'next/link';
 import { CashFlowChart } from '@/components/dashboard/FinancialCharts';
 
@@ -25,12 +27,13 @@ export default async function DashboardPage() {
   }
 
   const year = new Date().getFullYear();
-  const [summary, cashFlow, buildings, activity, buildingsList] = await Promise.all([
+  const [summary, cashFlow, buildings, activity, buildingsList, pendingApprovals] = await Promise.all([
     getFinancialSummary(year),
     getMonthlyCashFlow(year),
     prisma.building.count(),
     getRecentActivity(8),
     getBuildings().catch(() => []),
+    getAdminPendingCount(),
   ]);
 
   const allPendingInvoices = await prisma.invoice.findMany({
@@ -49,6 +52,7 @@ export default async function DashboardPage() {
     { title: 'Vacant rooms', value: String(summary.vacantRooms), icon: DoorOpen, color: 'text-slate-400' },
     { title: 'Buildings', value: String(buildings), icon: Building2, href: '/dashboard/buildings', color: 'text-sky-500' },
     { title: 'Due in 15 days', value: String(dueSoon.length), icon: FileText, href: '/dashboard/invoices', color: 'text-amber-500' },
+    { title: 'Pending approvals', value: String(pendingApprovals), icon: ClipboardCheck, href: '/dashboard/approvals', color: pendingApprovals > 0 ? 'text-red-500' : 'text-emerald-500' },
     { title: 'Maintenance pending', value: String(maintenancePending), icon: Wrench, href: '/dashboard/maintenance', color: 'text-orange-500' },
   ];
 
@@ -155,15 +159,28 @@ export default async function DashboardPage() {
 }
 
 async function TenantDashboard({ user }: { user: { id: string; fullName: string; unitId: string | null; tenantProfileId: string | null } }) {
-  const tenantProfile = user.tenantProfileId
-    ? await prisma.tenantProfile.findUnique({
-        where: { id: user.tenantProfileId },
-        include: { unit: { include: { building: true } } },
-      })
-    : null;
+  const [tenantProfile, dbUser, paymentProofs] = await Promise.all([
+    user.tenantProfileId
+      ? prisma.tenantProfile.findUnique({
+          where: { id: user.tenantProfileId },
+          include: {
+            user: { select: { phone: true } },
+            unit: {
+              include: {
+                building: {
+                  include: { manager: { select: { fullName: true, phone: true } } },
+                },
+              },
+            },
+          },
+        })
+      : Promise.resolve(null),
+    prisma.user.findUnique({ where: { id: user.id }, select: { phone: true } }),
+    getMyPaymentProofSummary(5).catch(() => []),
+  ]);
 
   const myInvoices = await prisma.invoice.findMany({
-    where: tenantInvoiceWhere(user),
+    where: { ...tenantInvoiceWhere(user), category: 'RENT' },
     orderBy: [{ year: 'desc' }, { quarter: 'desc' }],
     take: 5,
     include: { unit: true, payments: true },
@@ -174,22 +191,83 @@ async function TenantDashboard({ user }: { user: { id: string; fullName: string;
     return paid < Number(inv.amount) && inv.status !== 'PAID' && inv.status !== 'CANCELLED';
   });
 
+  const missingPhone = !dbUser?.phone?.trim();
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome, {user.fullName}</h1>
-      <p className="mt-1 text-slate-500 dark:text-slate-400">Tenant portal</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Welcome, {user.fullName}</h1>
+          <p className="mt-1 text-slate-500 dark:text-slate-400">Tenant portal</p>
+        </div>
+        <Link
+          href="/dashboard/alerts"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+        >
+          <Bell className="h-4 w-4 text-sky-500" />
+          Notifications
+        </Link>
+      </div>
 
-      {tenantProfile?.unit && (
-        <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
-          <h2 className="font-semibold text-slate-900 dark:text-white">Your room</h2>
-          <p className="mt-1 text-slate-600 dark:text-slate-300">
-            {tenantProfile.unit.building.name} – Room {tenantProfile.unit.unitNumber} ({floorLabel(tenantProfile.unit.floorNumber)})
+      {missingPhone && (
+        <div className="mt-6 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-100">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            Add your phone number in{' '}
+            <Link href="/dashboard/profile" className="font-medium underline">
+              My Profile
+            </Link>{' '}
+            to receive SMS rent reminders.
           </p>
-          <p className="mt-1 text-sm text-slate-500">Monthly rent: {formatCurrency(tenantProfile.unit.rentAmount)}</p>
         </div>
       )}
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-2">
+      {tenantProfile?.unit && (
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+            <h2 className="font-semibold text-slate-900 dark:text-white">Your room</h2>
+            <p className="mt-1 text-slate-600 dark:text-slate-300">
+              {tenantProfile.unit.building.name} – Room {tenantProfile.unit.unitNumber} ({floorLabel(tenantProfile.unit.floorNumber)})
+            </p>
+            <p className="mt-1 text-sm text-slate-500">Monthly rent: {formatCurrency(tenantProfile.unit.rentAmount)}</p>
+            {tenantProfile.unit.building.manager?.phone && (
+              <p className="mt-2 text-sm text-slate-500">
+                Property contact: {tenantProfile.unit.building.manager.fullName}
+                {tenantProfile.unit.building.manager.phone ? ` · ${tenantProfile.unit.building.manager.phone}` : ''}
+              </p>
+            )}
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+            <h2 className="font-semibold text-slate-900 dark:text-white">Lease & rent schedule</h2>
+            <dl className="mt-3 space-y-2 text-sm">
+              <div className="flex justify-between gap-4">
+                <dt className="text-slate-500">Lease start</dt>
+                <dd>{tenantProfile.unit.leaseStart ? formatDate(tenantProfile.unit.leaseStart) : '—'}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-slate-500">Lease end</dt>
+                <dd>{tenantProfile.unit.leaseEnd ? formatDate(tenantProfile.unit.leaseEnd) : '—'}</dd>
+              </div>
+              {tenantProfile.unit.quarterlyRentDueDate && (
+                <>
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-slate-500">Quarterly due date</dt>
+                    <dd>{formatDate(tenantProfile.unit.quarterlyRentDueDate)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-500">Upcoming due dates</dt>
+                    <dd className="mt-1 text-slate-700 dark:text-slate-300">
+                      {formatQuarterlySchedule(new Date(tenantProfile.unit.quarterlyRentDueDate))}
+                    </dd>
+                  </div>
+                </>
+              )}
+            </dl>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-slate-900 dark:text-white">Recent invoices</h2>
@@ -201,8 +279,10 @@ async function TenantDashboard({ user }: { user: { id: string; fullName: string;
             <ul className="mt-4 space-y-2">
               {myInvoices.map((inv) => (
                 <li key={inv.id} className="flex justify-between text-sm">
-                  <span>{formatPeriodLabel(inv)}</span>
-                  <span>{inv.status}</span>
+                  <Link href={`/dashboard/invoices/${inv.id}`} className="hover:underline">
+                    {formatPeriodLabel(inv)}
+                  </Link>
+                  <span>{INVOICE_STATUS_LABELS[inv.status]}</span>
                 </li>
               ))}
             </ul>
@@ -217,16 +297,49 @@ async function TenantDashboard({ user }: { user: { id: string; fullName: string;
               {upcoming.map((inv) => {
                 const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
                 const balance = Number(inv.amount) - paid;
+                const overdue = isOverdue(inv.dueDate);
                 return (
                   <li key={inv.id} className="flex justify-between">
-                    <span>Due {new Date(inv.dueDate).toLocaleDateString()}</span>
+                    <span className={overdue ? 'text-red-600' : undefined}>
+                      Due {formatDate(inv.dueDate)}
+                    </span>
                     <span className="font-medium">{formatCurrency(balance)}</span>
                   </li>
                 );
               })}
             </ul>
           )}
-          <Link href="/dashboard/payments" className="mt-3 inline-block text-sm text-sky-500 hover:underline">Payment history →</Link>
+          <Link href="/dashboard/invoices" className="mt-3 inline-block text-sm text-sky-500 hover:underline">View invoices →</Link>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800 sm:col-span-2 lg:col-span-1">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-slate-900 dark:text-white">Payment proofs</h2>
+            <Link href="/dashboard/invoices" className="text-sm text-sky-500 hover:underline">Upload</Link>
+          </div>
+          {paymentProofs.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-500">No payment proofs submitted yet.</p>
+          ) : (
+            <ul className="mt-4 space-y-2 text-sm">
+              {paymentProofs.map((proof) => (
+                <li key={proof.id} className="flex items-center justify-between gap-2">
+                  <Link href={proof.href} className="truncate hover:underline">
+                    {proof.invoiceLabel}
+                  </Link>
+                  <span
+                    className={
+                      proof.status === 'APPROVED'
+                        ? 'text-emerald-600'
+                        : proof.status === 'REJECTED'
+                          ? 'text-red-600'
+                          : 'text-amber-600'
+                    }
+                  >
+                    {PAYMENT_PROOF_STATUS_LABELS[proof.status]}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>

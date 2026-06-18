@@ -5,6 +5,7 @@ import { floorLabel } from '@/types';
 import { Plus, Pencil } from 'lucide-react';
 import { FloorRoomGrid } from '@/components/units/FloorRoomGrid';
 import { FloorOccupancyChart } from '@/components/dashboard/FinancialCharts';
+import { isImageProofUrl } from '@/lib/upload-utils';
 
 export default async function BuildingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -44,13 +45,29 @@ export default async function BuildingDetailPage({ params }: { params: Promise<{
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        {building.photoUrl && isImageProofUrl(building.photoUrl) && (
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 lg:col-span-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={building.photoUrl}
+              alt={`${building.name} photo`}
+              className="max-h-80 w-full object-cover"
+            />
+          </div>
+        )}
         <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
           <h2 className="font-semibold text-slate-900 dark:text-white">Building details</h2>
           <dl className="mt-3 space-y-2 text-sm">
-            <div><dt className="text-slate-500">Floors</dt><dd>{building.numberOfFloors} (Ground + {building.numberOfFloors - 1})</dd></div>
-            <div><dt className="text-slate-500">Total rooms</dt><dd>{totalUnits}</dd></div>
+            <div><dt className="text-slate-500">Floors</dt><dd>{building.numberOfFloors} (Ground + {Math.max(0, building.numberOfFloors - 1)})</dd></div>
+            <div><dt className="text-slate-500">Planned rooms</dt><dd>{building.numberOfRooms ?? '—'}</dd></div>
+            <div><dt className="text-slate-500">Rooms added</dt><dd>{totalUnits}</dd></div>
+            <div><dt className="text-slate-500">Area</dt><dd>{building.areaHectares != null ? `${toNumber(building.areaHectares)} ha` : '—'}</dd></div>
+            <div><dt className="text-slate-500">Security room</dt><dd>{building.hasSecurityRoom ? 'Yes' : 'No'}</dd></div>
+            {building.yearBuilt && <div><dt className="text-slate-500">Year built</dt><dd>{building.yearBuilt}</dd></div>}
             <div><dt className="text-slate-500">Parking spaces</dt><dd>{building.parkingSpaces}</dd></div>
+            <div><dt className="text-slate-500">Country</dt><dd>{building.country}</dd></div>
             {building.utilitiesInfo && <div><dt className="text-slate-500">Utilities</dt><dd>{building.utilitiesInfo}</dd></div>}
+            {building.notes && <div><dt className="text-slate-500">Notes</dt><dd>{building.notes}</dd></div>}
           </dl>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">

@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { getBuildings } from '@/app/actions/buildings';
+import { getBuildings, deleteBuilding } from '@/app/actions/buildings';
+import { DeleteEntityButton } from '@/components/ui/TableRowActions';
 import { Plus } from 'lucide-react';
 
 export default async function BuildingsPage() {
@@ -54,12 +55,18 @@ export default async function BuildingsPage() {
                     {b._count.units}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-right">
-                    <Link
-                      href={`/dashboard/buildings/${b.id}/edit`}
-                      className="text-sky-500 hover:underline"
-                    >
-                      Edit
-                    </Link>
+                    <div className="inline-flex items-center justify-end gap-3">
+                      <Link
+                        href={`/dashboard/buildings/${b.id}/edit`}
+                        className="text-sky-500 hover:underline"
+                      >
+                        Edit
+                      </Link>
+                      <DeleteEntityButton
+                        action={deleteBuilding.bind(null, b.id)}
+                        confirmMessage={`Delete "${b.name}"? All units and related records for this building will be permanently removed.`}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

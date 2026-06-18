@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
   ]);
 
   const invoices = await prisma.invoice.findMany({
-    where: { status: { in: ['SENT', 'PARTIAL', 'OVERDUE', 'DRAFT'] } },
+    where: { status: { in: ['SENT', 'PARTIAL', 'OVERDUE', 'DRAFT'] }, category: 'RENT' },
     include: {
       unit: { include: { tenant: { include: { user: true } } } },
       payments: true,

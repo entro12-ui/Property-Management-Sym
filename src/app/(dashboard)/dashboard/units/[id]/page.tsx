@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getUnit } from '@/app/actions/units';
 import { UNIT_TYPE_LABELS, UNIT_STATUS_LABELS, INVOICE_STATUS_LABELS } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatQuarterlySchedule } from '@/lib/billing-utils';
 
 export default async function UnitDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -28,7 +29,11 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
           <h2 className="font-semibold text-slate-900 dark:text-white">Details</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <div><dt className="text-slate-500">Size</dt><dd>{Number(unit.sizeSqm)} m²</dd></div>
-            <div><dt className="text-slate-500">Rent</dt><dd>{formatCurrency(unit.rentAmount)}</dd></div>
+            <div><dt className="text-slate-500">Rent</dt><dd>{formatCurrency(unit.rentAmount)} / month</dd></div>
+            <div><dt className="text-slate-500">Quarterly rent due</dt><dd>{unit.quarterlyRentDueDate ? formatDate(unit.quarterlyRentDueDate) : '—'}</dd></div>
+            {unit.quarterlyRentDueDate && (
+              <div><dt className="text-slate-500">Upcoming due dates</dt><dd className="text-slate-700 dark:text-slate-300">{formatQuarterlySchedule(new Date(unit.quarterlyRentDueDate))}</dd></div>
+            )}
             <div><dt className="text-slate-500">Lease start</dt><dd>{unit.leaseStart ? formatDate(unit.leaseStart) : '—'}</dd></div>
             <div><dt className="text-slate-500">Lease end</dt><dd>{unit.leaseEnd ? formatDate(unit.leaseEnd) : '—'}</dd></div>
             {unit.notes && <div><dt className="text-slate-500">Notes</dt><dd>{unit.notes}</dd></div>}

@@ -7,6 +7,23 @@ import type { UnitType, UnitStatus } from '@prisma/client';
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER'] as const;
 
+function parseUnitFormData(formData: FormData) {
+  return {
+    unitNumber: formData.get('unitNumber') as string,
+    floorNumber: parseInt(formData.get('floorNumber') as string, 10) || 0,
+    unitType: (formData.get('unitType') as UnitType) || 'ROOM',
+    sizeSqm: parseFloat(formData.get('sizeSqm') as string) || 0,
+    rentAmount: parseFloat(formData.get('rentAmount') as string) || 0,
+    quarterlyRentDueDate: formData.get('quarterlyRentDueDate')
+      ? new Date(formData.get('quarterlyRentDueDate') as string)
+      : null,
+    leaseStart: formData.get('leaseStart') ? new Date(formData.get('leaseStart') as string) : null,
+    leaseEnd: formData.get('leaseEnd') ? new Date(formData.get('leaseEnd') as string) : null,
+    status: (formData.get('status') as UnitStatus) || 'AVAILABLE',
+    notes: (formData.get('notes') as string) || undefined,
+  };
+}
+
 export async function getUnits(buildingId?: string) {
   await requireRole([...ADMIN_ROLES, 'ACCOUNTANT']);
   return prisma.unit.findMany({
@@ -34,28 +51,12 @@ export async function getUnit(id: string) {
 export async function createUnit(formData: FormData) {
   await requireRole([...ADMIN_ROLES]);
   const buildingId = formData.get('buildingId') as string;
-  const unitNumber = formData.get('unitNumber') as string;
-  const floorNumber = parseInt(formData.get('floorNumber') as string, 10) || 0;
-  const unitType = (formData.get('unitType') as UnitType) || 'APARTMENT';
-  const sizeSqm = parseFloat(formData.get('sizeSqm') as string) || 0;
-  const rentAmount = parseFloat(formData.get('rentAmount') as string) || 0;
-  const leaseStart = formData.get('leaseStart') ? new Date(formData.get('leaseStart') as string) : null;
-  const leaseEnd = formData.get('leaseEnd') ? new Date(formData.get('leaseEnd') as string) : null;
-  const status = (formData.get('status') as UnitStatus) || 'AVAILABLE';
-  const notes = (formData.get('notes') as string) || undefined;
+  const data = parseUnitFormData(formData);
 
   await prisma.unit.create({
     data: {
       buildingId,
-      unitNumber,
-      floorNumber,
-      unitType,
-      sizeSqm,
-      rentAmount,
-      leaseStart,
-      leaseEnd,
-      status,
-      notes,
+      ...data,
     },
   });
   revalidatePath('/dashboard');
@@ -65,29 +66,11 @@ export async function createUnit(formData: FormData) {
 
 export async function updateUnit(id: string, formData: FormData) {
   await requireRole([...ADMIN_ROLES]);
-  const unitNumber = formData.get('unitNumber') as string;
-  const floorNumber = parseInt(formData.get('floorNumber') as string, 10) || 0;
-  const unitType = (formData.get('unitType') as UnitType) || 'APARTMENT';
-  const sizeSqm = parseFloat(formData.get('sizeSqm') as string) || 0;
-  const rentAmount = parseFloat(formData.get('rentAmount') as string) || 0;
-  const leaseStart = formData.get('leaseStart') ? new Date(formData.get('leaseStart') as string) : null;
-  const leaseEnd = formData.get('leaseEnd') ? new Date(formData.get('leaseEnd') as string) : null;
-  const status = (formData.get('status') as UnitStatus) || 'AVAILABLE';
-  const notes = (formData.get('notes') as string) || undefined;
+  const data = parseUnitFormData(formData);
 
   const u = await prisma.unit.update({
     where: { id },
-    data: {
-      unitNumber,
-      floorNumber,
-      unitType,
-      sizeSqm,
-      rentAmount,
-      leaseStart,
-      leaseEnd,
-      status,
-      notes,
-    },
+    data,
   });
   revalidatePath('/dashboard');
   revalidatePath('/dashboard/units');

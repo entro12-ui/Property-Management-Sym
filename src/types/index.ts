@@ -17,6 +17,8 @@ import type {
   SmsStatus,
   PaymentProofType,
   PaymentProofStatus,
+  InvoiceCategory,
+  LeaveRequestStatus,
 } from '@prisma/client';
 
 export type {
@@ -38,6 +40,8 @@ export type {
   SmsStatus,
   PaymentProofType,
   PaymentProofStatus,
+  InvoiceCategory,
+  LeaveRequestStatus,
 };
 
 export type SmsSettingsView = {
@@ -125,6 +129,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 
 export const INCOME_TYPE_LABELS: Record<IncomeType, string> = {
   RENTAL: 'Rental Income',
+  PARKING: 'Parking Income',
   ADVANCE_PAYMENT: 'Advance Payment',
   DEPOSIT: 'Deposit',
   ADDITIONAL_CHARGE: 'Additional Charge',
@@ -178,6 +183,19 @@ export const PAYMENT_PROOF_STATUS_LABELS: Record<PaymentProofStatus, string> = {
   PENDING: 'Pending review',
   APPROVED: 'Approved',
   REJECTED: 'Rejected',
+};
+
+export const INVOICE_CATEGORY_LABELS: Record<InvoiceCategory, string> = {
+  RENT: 'Rent',
+  ELECTRICITY: 'Electricity',
+  WATER: 'Water',
+};
+
+export const LEAVE_REQUEST_STATUS_LABELS: Record<LeaveRequestStatus, string> = {
+  PENDING: 'Pending review',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  CANCELLED: 'Cancelled',
 };
 
 export const ANNOUNCEMENT_TYPE_LABELS: Record<AnnouncementType, string> = {

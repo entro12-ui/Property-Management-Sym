@@ -5,6 +5,48 @@ export function decimalToNumber(value: { toString(): string } | number | null | 
   return typeof value === 'number' ? value : Number(value);
 }
 
+/** Minimal unit reference safe for client components (no Prisma Decimal). */
+export function serializeUnitRefForClient(unit: {
+  unitNumber: string;
+  building: { name: string };
+}) {
+  return {
+    unitNumber: unit.unitNumber,
+    building: { name: unit.building.name },
+  };
+}
+
+/** Full unit fields for forms — converts Decimal to number. */
+export function serializeUnitForClient(unit: {
+  id: string;
+  buildingId: string;
+  unitNumber: string;
+  floorNumber: number;
+  unitType: import('@prisma/client').UnitType;
+  sizeSqm: { toString(): string } | number;
+  rentAmount: { toString(): string } | number;
+  quarterlyRentDueDate: Date | null;
+  leaseStart: Date | null;
+  leaseEnd: Date | null;
+  status: import('@prisma/client').UnitStatus;
+  notes: string | null;
+}) {
+  return {
+    id: unit.id,
+    buildingId: unit.buildingId,
+    unitNumber: unit.unitNumber,
+    floorNumber: unit.floorNumber,
+    unitType: unit.unitType,
+    sizeSqm: decimalToNumber(unit.sizeSqm),
+    rentAmount: decimalToNumber(unit.rentAmount),
+    quarterlyRentDueDate: unit.quarterlyRentDueDate,
+    leaseStart: unit.leaseStart,
+    leaseEnd: unit.leaseEnd,
+    status: unit.status,
+    notes: unit.notes,
+  };
+}
+
 type InvoiceLike = {
   amount: { toString(): string } | number;
   latePenalty?: { toString(): string } | number;
@@ -209,4 +251,47 @@ export function serializePaymentProofForClient<T extends ProofLike>(proof: T) {
 
 export function serializePaymentProofsForClient<T extends ProofLike>(proofs: T[]) {
   return proofs.map(serializePaymentProofForClient);
+}
+
+/** Serialize tenant profile for client components (strips Prisma Decimal, etc.). */
+export function serializeTenantProfileForClient(profile: {
+  emergencyContact: string | null;
+  emergencyPhone: string | null;
+  moveInDate: Date | null;
+  moveOutDate: Date | null;
+  user: { fullName: string; email: string; phone: string | null };
+  unit: {
+    unitNumber: string;
+    floorNumber: number;
+    rentAmount: { toString(): string } | number;
+    sizeSqm?: { toString(): string } | number;
+    leaseStart: Date | null;
+    leaseEnd: Date | null;
+    quarterlyRentDueDate: Date | null;
+    building: {
+      name: string;
+      address: string;
+      city: string;
+      manager: { fullName: string; email: string; phone: string | null } | null;
+    };
+  } | null;
+}) {
+  return {
+    emergencyContact: profile.emergencyContact,
+    emergencyPhone: profile.emergencyPhone,
+    moveInDate: profile.moveInDate,
+    moveOutDate: profile.moveOutDate,
+    user: profile.user,
+    unit: profile.unit
+      ? {
+          unitNumber: profile.unit.unitNumber,
+          floorNumber: profile.unit.floorNumber,
+          rentAmount: decimalToNumber(profile.unit.rentAmount),
+          leaseStart: profile.unit.leaseStart,
+          leaseEnd: profile.unit.leaseEnd,
+          quarterlyRentDueDate: profile.unit.quarterlyRentDueDate,
+          building: profile.unit.building,
+        }
+      : null,
+  };
 }

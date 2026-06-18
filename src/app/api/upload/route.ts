@@ -6,10 +6,12 @@ import { logger } from '@/lib/logger';
 import {
   paymentProofExtension,
   validatePaymentProofFile,
+  validateBuildingPhotoFile,
+  buildingPhotoExtension,
 } from '@/lib/upload-utils';
 
 const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
-const ALLOWED_TYPES = ['tenant-doc', 'receipt', 'expense', 'payment-proof'] as const;
+const ALLOWED_TYPES = ['tenant-doc', 'receipt', 'expense', 'payment-proof', 'building-photo'] as const;
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,13 +33,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (type === 'building-photo') {
+      const validationError = validateBuildingPhotoFile(file);
+      if (validationError) {
+        return NextResponse.json({ error: validationError }, { status: 400 });
+      }
+    }
+
     const dir = path.join(UPLOAD_DIR, type);
     await mkdir(dir, { recursive: true });
 
     const ext =
       type === 'payment-proof'
         ? paymentProofExtension(file)
-        : path.extname(file.name) || '.pdf';
+        : type === 'building-photo'
+          ? buildingPhotoExtension(file)
+          : path.extname(file.name) || '.pdf';
 
     const safeBase = file.name.replace(/[^\w.\-]+/g, '_').slice(0, 80);
     const name = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;

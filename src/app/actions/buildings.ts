@@ -1,11 +1,37 @@
 'use server';
 
 import { prisma } from '@/lib/db';
-import { requireRole, requireAuth } from '@/lib/auth';
+import { requireRole } from '@/lib/auth';
 import { buildingWhereForUser } from '@/lib/building-scope';
 import { revalidatePath } from 'next/cache';
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER'] as const;
+
+function parseBuildingFormData(formData: FormData) {
+  const hasSecurityRoom = formData.get('hasSecurityRoom') === 'true';
+  const areaRaw = formData.get('areaHectares') as string;
+  const roomsRaw = formData.get('numberOfRooms') as string;
+  const yearRaw = formData.get('yearBuilt') as string;
+  const photoUrl = (formData.get('photoUrl') as string)?.trim() || undefined;
+
+  return {
+    name: formData.get('name') as string,
+    address: formData.get('address') as string,
+    city: formData.get('city') as string,
+    state: (formData.get('state') as string) || undefined,
+    zipCode: (formData.get('zipCode') as string) || undefined,
+    country: (formData.get('country') as string) || 'Ethiopia',
+    numberOfFloors: parseInt(formData.get('numberOfFloors') as string, 10) || 1,
+    numberOfRooms: roomsRaw ? parseInt(roomsRaw, 10) : undefined,
+    parkingSpaces: parseInt(formData.get('parkingSpaces') as string, 10) || 0,
+    areaHectares: areaRaw ? parseFloat(areaRaw) : undefined,
+    hasSecurityRoom,
+    yearBuilt: yearRaw ? parseInt(yearRaw, 10) : undefined,
+    photoUrl,
+    utilitiesInfo: (formData.get('utilitiesInfo') as string) || undefined,
+    notes: (formData.get('notes') as string) || undefined,
+  };
+}
 
 export async function getBuildings() {
   const user = await requireRole([...ADMIN_ROLES, 'ACCOUNTANT']);
@@ -67,27 +93,11 @@ export async function getBuildingFloorSummary(buildingId: string) {
 
 export async function createBuilding(formData: FormData) {
   const user = await requireRole([...ADMIN_ROLES]);
-  const name = formData.get('name') as string;
-  const address = formData.get('address') as string;
-  const city = formData.get('city') as string;
-  const state = (formData.get('state') as string) || undefined;
-  const zipCode = (formData.get('zipCode') as string) || undefined;
-  const numberOfFloors = parseInt(formData.get('numberOfFloors') as string, 10) || 1;
-  const parkingSpaces = parseInt(formData.get('parkingSpaces') as string, 10) || 0;
-  const utilitiesInfo = (formData.get('utilitiesInfo') as string) || undefined;
-  const notes = (formData.get('notes') as string) || undefined;
+  const data = parseBuildingFormData(formData);
 
   await prisma.building.create({
     data: {
-      name,
-      address,
-      city,
-      state,
-      zipCode,
-      numberOfFloors,
-      parkingSpaces,
-      utilitiesInfo,
-      notes,
+      ...data,
       ownerId: user.role === 'BUILDING_OWNER' ? user.id : undefined,
     },
   });
@@ -97,19 +107,11 @@ export async function createBuilding(formData: FormData) {
 
 export async function updateBuilding(id: string, formData: FormData) {
   await requireRole([...ADMIN_ROLES]);
-  const name = formData.get('name') as string;
-  const address = formData.get('address') as string;
-  const city = formData.get('city') as string;
-  const state = (formData.get('state') as string) || undefined;
-  const zipCode = (formData.get('zipCode') as string) || undefined;
-  const numberOfFloors = parseInt(formData.get('numberOfFloors') as string, 10) || 1;
-  const parkingSpaces = parseInt(formData.get('parkingSpaces') as string, 10) || 0;
-  const utilitiesInfo = (formData.get('utilitiesInfo') as string) || undefined;
-  const notes = (formData.get('notes') as string) || undefined;
+  const data = parseBuildingFormData(formData);
 
   await prisma.building.update({
     where: { id },
-    data: { name, address, city, state, zipCode, numberOfFloors, parkingSpaces, utilitiesInfo, notes },
+    data,
   });
   revalidatePath('/dashboard');
   revalidatePath('/dashboard/buildings');
@@ -121,4 +123,5 @@ export async function deleteBuilding(id: string) {
   await prisma.building.delete({ where: { id } });
   revalidatePath('/dashboard');
   revalidatePath('/dashboard/buildings');
+  revalidatePath('/dashboard/units');
 }

@@ -9,6 +9,9 @@ const PAYMENT_PROOF_MIME_TO_EXT: Record<string, string> = {
 export const PAYMENT_PROOF_ACCEPT =
   '.pdf,.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp,application/pdf';
 
+export const BUILDING_PHOTO_ACCEPT =
+  '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp';
+
 export function validatePaymentProofFile(file: File): string | null {
   const maxBytes = 10 * 1024 * 1024;
   if (file.size > maxBytes) return 'File is too large. Maximum size is 10 MB.';
@@ -45,6 +48,14 @@ export function detectPaymentProofType(fileName: string | null, fileUrl: string)
   const value = (fileName ?? fileUrl).toLowerCase();
   if (value.endsWith('.pdf')) return 'DOCUMENT';
   return 'IMAGE';
+}
+
+export function validateBuildingPhotoFile(file: File): string | null {
+  return validatePaymentProofFile(file);
+}
+
+export function buildingPhotoExtension(file: File): string {
+  return paymentProofExtension(file);
 }
 
 export function isImageProofUrl(url: string): boolean {

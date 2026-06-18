@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { getUnits } from '@/app/actions/units';
+import { getUnits, deleteUnit } from '@/app/actions/units';
+import { DeleteEntityButton } from '@/components/ui/TableRowActions';
 import { UNIT_TYPE_LABELS, UNIT_STATUS_LABELS } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { Plus } from 'lucide-react';
@@ -55,7 +56,15 @@ export default async function UnitsPage() {
                     {u.tenant?.user?.fullName ?? '—'}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-right">
-                    <Link href={`/dashboard/units/${u.id}/edit`} className="text-sky-500 hover:underline">Edit</Link>
+                    <div className="inline-flex items-center justify-end gap-3">
+                      <Link href={`/dashboard/units/${u.id}/edit`} className="text-sky-500 hover:underline">
+                        Edit
+                      </Link>
+                      <DeleteEntityButton
+                        action={deleteUnit.bind(null, u.id)}
+                        confirmMessage={`Delete unit #${u.unitNumber} in ${u.building.name}? This cannot be undone.`}
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}

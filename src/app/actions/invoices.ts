@@ -4,17 +4,28 @@ import { prisma } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { invoiceWhereForUser } from '@/lib/building-scope';
 import { tenantInvoiceWhere, tenantCanAccessInvoice } from '@/lib/tenant-invoice-scope';
-import { getQuarterDates, quarterlyRentAmount } from '@/lib/billing-utils';
+import { getQuarterDates, quarterlyRentAmount, quarterlyDueDateFromAnchor } from '@/lib/billing-utils';
 import { logActivity } from '@/lib/activity-log';
 import { revalidatePath } from 'next/cache';
-import type { BillingPeriod } from '@prisma/client';
+import type { BillingPeriod, InvoiceCategory } from '@prisma/client';
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER', 'ACCOUNTANT'] as const;
 
-export async function getInvoices(filters?: { buildingId?: string; unitId?: string; status?: string }) {
+export async function getInvoices(filters?: {
+  buildingId?: string;
+  unitId?: string;
+  status?: string;
+  category?: InvoiceCategory | InvoiceCategory[];
+}) {
   const user = await requireAuth();
   const isAdmin = ADMIN_ROLES.includes(user.role as (typeof ADMIN_ROLES)[number]);
   const scope = isAdmin ? invoiceWhereForUser(user) : undefined;
+
+  const categoryWhere = filters?.category
+    ? Array.isArray(filters.category)
+      ? { in: filters.category }
+      : filters.category
+    : undefined;
 
   if (isAdmin) {
     return prisma.invoice.findMany({
@@ -23,6 +34,7 @@ export async function getInvoices(filters?: { buildingId?: string; unitId?: stri
         ...(filters?.buildingId && { unit: { buildingId: filters.buildingId } }),
         ...(filters?.unitId && { unitId: filters.unitId }),
         ...(filters?.status && { status: filters.status as 'DRAFT' | 'SENT' | 'PARTIAL' | 'PAID' | 'OVERDUE' | 'CANCELLED' }),
+        ...(categoryWhere ? { category: categoryWhere } : {}),
       },
       orderBy: [{ year: 'desc' }, { quarter: 'desc' }, { month: 'desc' }],
       include: {
@@ -35,7 +47,10 @@ export async function getInvoices(filters?: { buildingId?: string; unitId?: stri
 
   if (user.tenantProfileId) {
     return prisma.invoice.findMany({
-      where: tenantInvoiceWhere(user, filters),
+      where: tenantInvoiceWhere(user, {
+        status: filters?.status,
+        category: filters?.category,
+      }),
       orderBy: [{ year: 'desc' }, { quarter: 'desc' }, { month: 'desc' }],
       include: {
         unit: { include: { building: { select: { name: true } }, tenant: { select: { id: true } } } },
@@ -71,7 +86,8 @@ export async function getInvoice(id: string) {
 export async function createInvoice(formData: FormData) {
   const user = await requireRole(ADMIN_ROLES);
   const unitId = formData.get('unitId') as string;
-  const periodType = (formData.get('periodType') as BillingPeriod) || 'QUARTERLY';
+  const category = ((formData.get('category') as InvoiceCategory) || 'RENT');
+  const periodType = (formData.get('periodType') as BillingPeriod) || (category === 'RENT' ? 'QUARTERLY' : 'MONTHLY');
   const year = parseInt(formData.get('year') as string, 10);
   const quarter = formData.get('quarter') ? parseInt(formData.get('quarter') as string, 10) : undefined;
   const month = formData.get('month') ? parseInt(formData.get('month') as string, 10) : undefined;
@@ -97,6 +113,7 @@ export async function createInvoice(formData: FormData) {
     data: {
       unitId,
       tenantId,
+      category,
       periodType,
       month: month ?? null,
       year,
@@ -115,10 +132,11 @@ export async function createInvoice(formData: FormData) {
     action: 'CREATE',
     entityType: 'Invoice',
     entityId: invoice.id,
-    description: `Created invoice for unit ${unit.unitNumber}`,
+    description: `Created ${category.toLowerCase()} invoice for unit ${unit.unitNumber}`,
   });
 
   revalidatePath('/dashboard/invoices');
+  revalidatePath('/dashboard/utility-bills');
   revalidatePath('/dashboard');
 }
 
@@ -130,7 +148,7 @@ export async function generateMonthlyInvoices(month: number, year: number) {
     include: { tenant: true },
   });
   const existing = await prisma.invoice.findMany({
-    where: { month, year, periodType: 'MONTHLY' },
+    where: { month, year, periodType: 'MONTHLY', category: 'RENT' },
     select: { unitId: true },
   });
   const existingUnitIds = new Set(existing.map((e) => e.unitId));
@@ -149,6 +167,7 @@ export async function generateMonthlyInvoices(month: number, year: number) {
         dueDate,
         amount: unit.rentAmount,
         status: 'DRAFT',
+        category: 'RENT',
       },
     });
     created++;
@@ -175,13 +194,16 @@ export async function generateQuarterlyInvoices(quarter: number, year: number) {
     include: { tenant: true },
   });
   const existing = await prisma.invoice.findMany({
-    where: { quarter, year, periodType: 'QUARTERLY' },
+    where: { quarter, year, periodType: 'QUARTERLY', category: 'RENT' },
     select: { unitId: true },
   });
   const existingUnitIds = new Set(existing.map((e) => e.unitId));
   let created = 0;
   for (const unit of units) {
     if (existingUnitIds.has(unit.id)) continue;
+    const unitDueDate = unit.quarterlyRentDueDate
+      ? quarterlyDueDateFromAnchor(new Date(unit.quarterlyRentDueDate), year, quarter)
+      : dueDate;
     await prisma.invoice.create({
       data: {
         unitId: unit.id,
@@ -191,9 +213,10 @@ export async function generateQuarterlyInvoices(quarter: number, year: number) {
         year,
         periodStart: start,
         periodEnd: end,
-        dueDate,
+        dueDate: unitDueDate,
         amount: quarterlyRentAmount(Number(unit.rentAmount)),
         status: 'DRAFT',
+        category: 'RENT',
       },
     });
     created++;

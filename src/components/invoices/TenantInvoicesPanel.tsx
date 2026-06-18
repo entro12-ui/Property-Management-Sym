@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useFormStatus } from 'react-dom';
 import { submitPaymentProof } from '@/app/actions/payment-proofs';
@@ -9,10 +9,11 @@ import { PaymentProofList } from '@/components/invoices/PaymentProofList';
 import { uploadPaymentProofFile } from '@/lib/client-upload';
 import { PAYMENT_PROOF_ACCEPT } from '@/lib/upload-utils';
 import { formatCurrency } from '@/lib/utils';
-import { formatPeriodLabel } from '@/lib/billing-utils';
-import { INVOICE_STATUS_LABELS, PAYMENT_PROOF_STATUS_LABELS } from '@/types';
+import { formatInvoiceLabel } from '@/lib/billing-utils';
+import { INVOICE_STATUS_LABELS, INVOICE_CATEGORY_LABELS, PAYMENT_PROOF_STATUS_LABELS } from '@/types';
 import type { ClientPaymentProof } from '@/lib/serialize-client';
-import type { InvoiceStatus } from '@prisma/client';
+import type { InvoiceStatus, InvoiceCategory } from '@prisma/client';
+import { Droplets, Home, Zap } from 'lucide-react';
 
 type TenantInvoice = {
   id: string;
@@ -20,6 +21,7 @@ type TenantInvoice = {
   quarter: number | null;
   month: number | null;
   periodType: 'MONTHLY' | 'QUARTERLY';
+  category?: InvoiceCategory;
   dueDate: Date;
   amount: { toString(): string } | number;
   status: InvoiceStatus;
@@ -31,18 +33,53 @@ type TenantInvoice = {
 type TenantInvoicesPanelProps = {
   invoices: TenantInvoice[];
   submittedProofs: ClientPaymentProof[];
-  activeFilter?: string;
+  activeStatusFilter?: string;
+  activeCategoryFilter?: string;
 };
 
-export function TenantInvoicesPanel({ invoices, submittedProofs, activeFilter }: TenantInvoicesPanelProps) {
+const CATEGORY_ORDER: InvoiceCategory[] = ['RENT', 'ELECTRICITY', 'WATER'];
+
+const CATEGORY_STYLES: Record<InvoiceCategory, string> = {
+  RENT: 'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-200',
+  ELECTRICITY: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
+  WATER: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/40 dark:text-cyan-200',
+};
+
+const CATEGORY_ICONS: Record<InvoiceCategory, typeof Home> = {
+  RENT: Home,
+  ELECTRICITY: Zap,
+  WATER: Droplets,
+};
+
+function invoiceCategory(inv: TenantInvoice): InvoiceCategory {
+  return inv.category ?? 'RENT';
+}
+
+export function TenantInvoicesPanel({
+  invoices,
+  submittedProofs,
+  activeStatusFilter,
+  activeCategoryFilter,
+}: TenantInvoicesPanelProps) {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState(invoices[0]?.id ?? '');
+
+  const groupedInvoices = useMemo(() => {
+    if (activeCategoryFilter) {
+      return [{ category: activeCategoryFilter as InvoiceCategory, items: invoices }];
+    }
+    return CATEGORY_ORDER.map((category) => ({
+      category,
+      items: invoices.filter((inv) => invoiceCategory(inv) === category),
+    })).filter((group) => group.items.length > 0);
+  }, [invoices, activeCategoryFilter]);
 
   return (
     <div className="mt-6 space-y-6">
       <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Upload payment receipt</h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Upload your bank receipt or mobile money screenshot (JPG, PNG, or PDF), such as a CBE mobile banking confirmation.
+          Upload proof for rent, electricity, or water bills — bank receipt, mobile money screenshot (JPG, PNG, PDF),
+          or a billing link.
         </p>
 
         {invoices.length > 0 ? (
@@ -54,19 +91,21 @@ export function TenantInvoicesPanel({ invoices, submittedProofs, activeFilter }:
               id="invoiceSelect"
               value={selectedInvoiceId}
               onChange={(e) => setSelectedInvoiceId(e.target.value)}
-              className="mt-1 w-full max-w-md rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+              className="mt-1 w-full max-w-lg rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
             >
-              <option value="">General rent payment (no invoice selected)</option>
+              <option value="">General payment (no invoice selected)</option>
               {invoices.map((inv) => (
                 <option key={inv.id} value={inv.id}>
-                  {formatPeriodLabel(inv)} – {formatCurrency(inv.amount)} ({INVOICE_STATUS_LABELS[inv.status]})
+                  [{INVOICE_CATEGORY_LABELS[invoiceCategory(inv)]}] {formatInvoiceLabel(inv)} –{' '}
+                  {formatCurrency(inv.amount)} ({INVOICE_STATUS_LABELS[inv.status]})
                 </option>
               ))}
             </select>
           </div>
         ) : (
           <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
-            No rent invoice has been issued yet. You can still submit your payment proof below and management will match it to your account.
+            No invoices have been issued yet. You can still submit your payment proof below and management will match
+            it to your account.
           </p>
         )}
 
@@ -77,9 +116,7 @@ export function TenantInvoicesPanel({ invoices, submittedProofs, activeFilter }:
 
       <div className="rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
         <h2 className="font-semibold text-slate-900 dark:text-white">Your submitted proofs</h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Receipts you have uploaded for review.
-        </p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Receipts you have uploaded for review.</p>
         <div className="mt-4">
           <PaymentProofList proofs={submittedProofs} isAdmin={false} />
         </div>
@@ -87,71 +124,107 @@ export function TenantInvoicesPanel({ invoices, submittedProofs, activeFilter }:
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
         <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-700">
-          <h2 className="font-semibold text-slate-900 dark:text-white">Your rent invoices</h2>
-          {activeFilter && (
+          <h2 className="font-semibold text-slate-900 dark:text-white">Your invoices</h2>
+          {(activeStatusFilter || activeCategoryFilter) && (
             <p className="mt-1 text-xs text-slate-500">
-              Filtered by {INVOICE_STATUS_LABELS[activeFilter as InvoiceStatus] ?? activeFilter}.{' '}
-              <Link href="/dashboard/invoices" className="text-sky-600 hover:underline">Show all</Link>
+              {activeCategoryFilter && (
+                <span>{INVOICE_CATEGORY_LABELS[activeCategoryFilter as InvoiceCategory]} · </span>
+              )}
+              {activeStatusFilter && (
+                <span>{INVOICE_STATUS_LABELS[activeStatusFilter as InvoiceStatus]} · </span>
+              )}
+              <Link href="/dashboard/invoices" className="text-sky-600 hover:underline">
+                Clear filters
+              </Link>
             </p>
           )}
         </div>
 
         {invoices.length === 0 ? (
           <div className="p-10 text-center text-slate-500">
-            {activeFilter
-              ? `No ${INVOICE_STATUS_LABELS[activeFilter as InvoiceStatus]?.toLowerCase() ?? activeFilter} invoices.`
-              : 'No rent invoices issued yet. Use the upload form above after you pay rent.'}
+            {activeStatusFilter || activeCategoryFilter
+              ? 'No invoices match your filters.'
+              : 'No invoices issued yet. Use the upload form above after you make a payment.'}
           </div>
         ) : (
           <div className="divide-y divide-slate-200 dark:divide-slate-700">
-            {invoices.map((inv) => {
-              const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
-              const balance = Math.max(0, Number(inv.amount) - paid);
-              const pendingProof = inv.paymentProofs.find((p) => p.status === 'PENDING');
-              const approvedProof = inv.paymentProofs.some((p) => p.status === 'APPROVED');
-
+            {groupedInvoices.map(({ category, items }) => {
+              const Icon = CATEGORY_ICONS[category];
               return (
-                <div key={inv.id} className="flex flex-wrap items-center justify-between gap-4 px-4 py-4">
-                  <div>
-                    <p className="font-medium text-slate-900 dark:text-white">{formatPeriodLabel(inv)}</p>
-                    <p className="text-sm text-slate-500">
-                      {inv.unit.building.name} – Room {inv.unit.unitNumber} · Due {new Date(inv.dueDate).toLocaleDateString()}
-                    </p>
-                    <p className="mt-1 text-sm">
-                      {formatCurrency(inv.amount)}
-                      {balance > 0 && inv.status !== 'PAID' && (
-                        <span className="ml-2 text-amber-600">({formatCurrency(balance)} due)</span>
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-                      {INVOICE_STATUS_LABELS[inv.status]}
-                    </span>
-                    {approvedProof ? (
-                      <span className="text-xs font-medium text-emerald-600">Proof approved</span>
-                    ) : pendingProof ? (
-                      <span className="text-xs font-medium text-amber-600">{PAYMENT_PROOF_STATUS_LABELS.PENDING}</span>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => {
+                <div key={category}>
+                  {!activeCategoryFilter && groupedInvoices.length > 1 && (
+                    <div className="flex items-center gap-2 bg-slate-50 px-4 py-2.5 dark:bg-slate-700/40">
+                      <Icon className="h-4 w-4 text-slate-500" />
+                      <span className="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                        {INVOICE_CATEGORY_LABELS[category]}
+                      </span>
+                    </div>
+                  )}
+                  {items.map((inv) => (
+                    <InvoiceRow
+                      key={inv.id}
+                      inv={inv}
+                      onUpload={() => {
                         setSelectedInvoiceId(inv.id);
                         document.getElementById('tenant-upload-section')?.scrollIntoView({ behavior: 'smooth' });
                       }}
-                      className="rounded-lg border border-emerald-600 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
-                    >
-                      Upload receipt
-                    </button>
-                    <Link href={`/dashboard/invoices/${inv.id}`} className="text-sm text-sky-600 hover:underline">
-                      Details
-                    </Link>
-                  </div>
+                    />
+                  ))}
                 </div>
               );
             })}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function InvoiceRow({ inv, onUpload }: { inv: TenantInvoice; onUpload: () => void }) {
+  const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
+  const balance = Math.max(0, Number(inv.amount) - paid);
+  const pendingProof = inv.paymentProofs.find((p) => p.status === 'PENDING');
+  const approvedProof = inv.paymentProofs.some((p) => p.status === 'APPROVED');
+  const category = invoiceCategory(inv);
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4">
+      <div>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${CATEGORY_STYLES[category]}`}>
+            {INVOICE_CATEGORY_LABELS[category]}
+          </span>
+          <p className="font-medium text-slate-900 dark:text-white">{formatInvoiceLabel(inv)}</p>
+        </div>
+        <p className="mt-1 text-sm text-slate-500">
+          {inv.unit.building.name} – Room {inv.unit.unitNumber} · Due {new Date(inv.dueDate).toLocaleDateString()}
+        </p>
+        <p className="mt-1 text-sm">
+          {formatCurrency(inv.amount)}
+          {balance > 0 && inv.status !== 'PAID' && (
+            <span className="ml-2 text-amber-600">({formatCurrency(balance)} due)</span>
+          )}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-700 dark:text-slate-200">
+          {INVOICE_STATUS_LABELS[inv.status]}
+        </span>
+        {approvedProof ? (
+          <span className="text-xs font-medium text-emerald-600">Proof approved</span>
+        ) : pendingProof ? (
+          <span className="text-xs font-medium text-amber-600">{PAYMENT_PROOF_STATUS_LABELS.PENDING}</span>
+        ) : null}
+        <button
+          type="button"
+          onClick={onUpload}
+          className="rounded-lg border border-emerald-600 px-3 py-1.5 text-sm font-medium text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+        >
+          Upload receipt
+        </button>
+        <Link href={`/dashboard/invoices/${inv.id}`} className="text-sm text-sky-600 hover:underline">
+          Details
+        </Link>
       </div>
     </div>
   );
@@ -259,7 +332,7 @@ function PaymentProofUploadForm({ invoiceId }: { invoiceId?: string }) {
           rows={2}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="e.g. Paid via CBE mobile banking"
+          placeholder="e.g. Electricity bill for March, paid via CBE mobile banking"
           className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
         />
       </div>

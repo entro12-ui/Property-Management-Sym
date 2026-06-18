@@ -76,7 +76,7 @@ export async function getAdminPaymentProofs(status?: PaymentProofStatus) {
       tenant: {
         include: {
           user: { select: { fullName: true, email: true } },
-          unit: { include: { building: { select: { name: true } } } },
+          unit: { select: { unitNumber: true, building: { select: { name: true } } } },
         },
       },
       invoice: {
@@ -221,7 +221,8 @@ export async function submitPaymentProof(formData: FormData): Promise<PaymentPro
 
     revalidatePath('/dashboard/invoices');
     if (invoiceId) revalidatePath(`/dashboard/invoices/${invoiceId}`);
-    revalidatePath('/dashboard/payments');
+    revalidatePath('/dashboard/approvals');
+    revalidatePath('/dashboard/alerts');
 
     return { success: true };
   } catch (e) {
@@ -387,9 +388,10 @@ export async function approvePaymentProof(proofId: string) {
   });
 
   revalidatePath('/dashboard/invoices');
-  revalidatePath('/dashboard/payments');
   revalidatePath('/dashboard/income');
   revalidatePath('/dashboard/reports');
+  revalidatePath('/dashboard/approvals');
+  revalidatePath('/dashboard/alerts');
   if (proof.invoiceId) revalidatePath(`/dashboard/invoices/${proof.invoiceId}`);
 }
 
@@ -401,7 +403,8 @@ export async function rejectPaymentProof(proofId: string) {
     select: { invoiceId: true },
   });
   revalidatePath('/dashboard/invoices');
-  revalidatePath('/dashboard/payments');
+  revalidatePath('/dashboard/approvals');
+  revalidatePath('/dashboard/alerts');
   if (proof.invoiceId) revalidatePath(`/dashboard/invoices/${proof.invoiceId}`);
 }
 

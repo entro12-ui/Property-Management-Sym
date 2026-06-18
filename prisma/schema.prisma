@@ -45,6 +45,7 @@ model User {
   approvedExpenses      Expense[]        @relation("ExpenseApprover")
   activityLogs          ActivityLog[]
   paymentProofs         InvoicePaymentProof[]
+  reviewedLeaveRequests LeaveRequest[]   @relation("LeaveRequestReviewer")
 }
 
 // ============ BUILDINGS & UNITS ============
@@ -55,9 +56,14 @@ model Building {
   city            String
   state           String?
   zipCode         String?  @map("zip_code")
-  country         String   @default("USA")
+  country         String   @default("Ethiopia")
   numberOfFloors  Int      @map("number_of_floors")
+  numberOfRooms   Int?     @map("number_of_rooms")
   parkingSpaces   Int      @default(0) @map("parking_spaces")
+  areaHectares    Decimal? @map("area_hectares") @db.Decimal(10, 4)
+  hasSecurityRoom Boolean  @default(false) @map("has_security_room")
+  yearBuilt       Int?     @map("year_built")
+  photoUrl        String?  @map("photo_url")
   utilitiesInfo   String?  @map("utilities_info")
   notes           String?
   ownerId         String?  @map("owner_id")
@@ -97,8 +103,9 @@ model Unit {
   floorNumber   Int        @map("floor_number")
   unitType      UnitType   @default(ROOM) @map("unit_type")
   sizeSqm       Decimal    @map("size_sqm") @db.Decimal(10, 2)
-  rentAmount    Decimal    @map("rent_amount") @db.Decimal(12, 2)
-  leaseStart    DateTime?  @map("lease_start") @db.Date
+  rentAmount           Decimal    @map("rent_amount") @db.Decimal(12, 2)
+  quarterlyRentDueDate DateTime?  @map("quarterly_rent_due_date") @db.Date
+  leaseStart           DateTime?  @map("lease_start") @db.Date
   leaseEnd      DateTime?  @map("lease_end") @db.Date
   status        UnitStatus @default(AVAILABLE)
   notes         String?
@@ -111,6 +118,7 @@ model Unit {
   maintenanceRequests MaintenanceRequest[]
   utilityReadings     UtilityReading[]
   assignmentHistory   TenantUnitHistory[]
+  leaveRequests       LeaveRequest[]
 
   @@unique([buildingId, unitNumber])
 }
@@ -161,6 +169,7 @@ model TenantProfile {
   incomes           Income[]
   smsLogs           SmsNotificationLog[]
   paymentProofs     InvoicePaymentProof[]
+  leaveRequests     LeaveRequest[]
 }
 
 model TenantDocument {
@@ -205,11 +214,18 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+enum InvoiceCategory {
+  RENT
+  ELECTRICITY
+  WATER
+}
+
 model Invoice {
-  id            String        @id @default(cuid())
-  unitId        String        @map("unit_id")
-  tenantId      String?       @map("tenant_id")
-  periodType    BillingPeriod @default(QUARTERLY) @map("period_type")
+  id            String          @id @default(cuid())
+  unitId        String          @map("unit_id")
+  tenantId      String?         @map("tenant_id")
+  category      InvoiceCategory @default(RENT)
+  periodType    BillingPeriod   @default(QUARTERLY) @map("period_type")
   month         Int?
   year          Int
   quarter       Int?
@@ -294,6 +310,7 @@ model Payment {
 // ============ INCOME ============
 enum IncomeType {
   RENTAL
+  PARKING
   ADVANCE_PAYMENT
   DEPOSIT
   ADDITIONAL_CHARGE
@@ -523,4 +540,30 @@ model UtilityReading {
   createdAt   DateTime @default(now()) @map("created_at")
 
   unit        Unit     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+}
+
+// ============ LEAVE / VACATE REQUESTS ============
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model LeaveRequest {
+  id                   String             @id @default(cuid())
+  tenantId             String             @map("tenant_id")
+  unitId               String             @map("unit_id")
+  requestedMoveOutDate DateTime           @map("requested_move_out_date") @db.Date
+  reason               String?
+  status               LeaveRequestStatus @default(PENDING)
+  reviewedById         String?            @map("reviewed_by_id")
+  adminNotes           String?            @map("admin_notes")
+  reviewedAt           DateTime?          @map("reviewed_at")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  tenant     TenantProfile @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  unit       Unit          @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  reviewedBy User?         @relation("LeaveRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
 }

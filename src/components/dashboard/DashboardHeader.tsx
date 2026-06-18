@@ -1,15 +1,22 @@
 'use client';
 
+import Link from 'next/link';
 import { signOut } from 'next-auth/react';
 import type { AuthUser } from '@/lib/auth';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { BrandLogo } from '@/components/layout/BrandLogo';
-import { LogOut } from 'lucide-react';
+import { Bell, LogOut } from 'lucide-react';
 
-export function DashboardHeader({ user }: { user: AuthUser }) {
+export function DashboardHeader({ user, alertCount = 0 }: { user: AuthUser; alertCount?: number }) {
   const { t, labels } = useLocale();
   const initial = user.fullName?.trim().charAt(0).toUpperCase() || '?';
+  const isAdmin =
+    user.role === 'SUPER_ADMIN' ||
+    user.role === 'BUILDING_OWNER' ||
+    user.role === 'PROPERTY_MANAGER' ||
+    user.role === 'ACCOUNTANT';
+  const alertsHref = isAdmin ? '/dashboard/approvals' : '/dashboard/alerts';
 
   return (
     <header className="sticky top-0 z-20 border-b border-indigo-800/60 bg-gradient-to-r from-indigo-950 via-indigo-900 to-indigo-950 shadow-md shadow-indigo-950/15">
@@ -23,6 +30,18 @@ export function DashboardHeader({ user }: { user: AuthUser }) {
         </div>
         <div className="hidden flex-1 lg:block" />
         <div className="flex items-center gap-3 sm:gap-4">
+          <Link
+            href={alertsHref}
+            className="relative rounded-lg border border-indigo-700/50 bg-indigo-900/50 p-2 text-indigo-50 transition hover:bg-indigo-800/60"
+            aria-label={isAdmin ? t('nav.pendingApprovals') : t('nav.myNotifications')}
+          >
+            <Bell className="h-5 w-5" />
+            {alertCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                {alertCount > 99 ? '99+' : alertCount}
+              </span>
+            )}
+          </Link>
           <LanguageSwitcher tone="onDark" />
           <div className="hidden h-8 w-px bg-indigo-700/60 md:block" aria-hidden />
           <div className="hidden items-center gap-3 md:flex">

@@ -1,51 +1,14 @@
 'use server';
 
 import { prisma } from '@/lib/db';
-import { requireAuth, requireRole } from '@/lib/auth';
-import { invoiceWhereForUser } from '@/lib/building-scope';
-import { tenantInvoiceWhere } from '@/lib/tenant-invoice-scope';
+import { requireRole } from '@/lib/auth';
 import { logActivity } from '@/lib/activity-log';
 import { revalidatePath } from 'next/cache';
 import type { PaymentMethod } from '@prisma/client';
 
 const ADMIN_ROLES = ['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER', 'ACCOUNTANT'] as const;
 
-export async function getPayments(filters?: { invoiceId?: string }) {
-  const user = await requireAuth();
-  const isAdmin = ADMIN_ROLES.includes(user.role as (typeof ADMIN_ROLES)[number]);
-
-  if (isAdmin) {
-    const scope = invoiceWhereForUser(user);
-    return prisma.payment.findMany({
-      where: {
-        ...(filters?.invoiceId ? { invoiceId: filters.invoiceId } : {}),
-        ...(scope ? { invoice: scope } : {}),
-      },
-      orderBy: { paidAt: 'desc' },
-      include: {
-        invoice: { include: { unit: { include: { building: { select: { name: true } } } } } },
-        recordedBy: { select: { fullName: true } },
-      },
-    });
-  }
-
-  if (user.tenantProfileId) {
-    return prisma.payment.findMany({
-      where: {
-        invoice: tenantInvoiceWhere(user),
-        ...(filters?.invoiceId ? { invoiceId: filters.invoiceId } : {}),
-      },
-      orderBy: { paidAt: 'desc' },
-      include: {
-        invoice: { include: { unit: { include: { building: { select: { name: true } } } } } },
-        recordedBy: { select: { fullName: true } },
-      },
-    });
-  }
-
-  return [];
-}
-
+/** Record a payment against an invoice (used from invoice detail page). */
 export async function recordPayment(formData: FormData) {
   const user = await requireRole(ADMIN_ROLES);
   const invoiceId = formData.get('invoiceId') as string;
@@ -85,7 +48,7 @@ export async function recordPayment(formData: FormData) {
     description: `Recorded payment of ${amount} for invoice`,
   });
 
-  revalidatePath('/dashboard/payments');
   revalidatePath('/dashboard/invoices');
+  revalidatePath(`/dashboard/invoices/${invoiceId}`);
   revalidatePath('/dashboard');
 }

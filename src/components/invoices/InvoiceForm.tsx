@@ -21,6 +21,15 @@ export function InvoiceForm({ unitOptions }: { unitOptions: UnitOption[] }) {
           ))}
         </select>
       </div>
+      <div>
+        <label htmlFor="category" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Bill type</label>
+        <select id="category" name="category" defaultValue="RENT" className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white">
+          <option value="RENT">Rent</option>
+          <option value="ELECTRICITY">Electricity</option>
+          <option value="WATER">Water</option>
+        </select>
+      </div>
+      <input type="hidden" name="periodType" value="MONTHLY" />
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="month" className="block text-sm font-medium text-slate-700 dark:text-slate-300">Month</label>
