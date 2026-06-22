@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { BrandLogo } from '@/components/layout/BrandLogo';
+import { BuiltBySection } from '@/components/layout/BuiltBySection';
 
 export function SiteFooter() {
   const { t } = useLocale();
@@ -11,8 +12,8 @@ export function SiteFooter() {
   return (
     <footer className="border-t-2 border-amber-600/50 bg-stone-950 text-stone-400">
       <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-10 md:grid-cols-3">
-          <div className="md:col-span-1">
+        <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+          <div className="lg:col-span-1">
             <BrandLogo tone="onDark" />
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-stone-400">
               {t('home.footerAbout')}
@@ -46,15 +47,23 @@ export function SiteFooter() {
               </li>
               <li>
                 <Link href="/signup" className="text-stone-300 transition hover:text-amber-400">
-                  {t('auth.signUp')}
+                  {t('auth.ownerSignUp')}
                 </Link>
               </li>
             </ul>
           </div>
+          <div>
+            <BuiltBySection variant="card" />
+          </div>
         </div>
-        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-stone-800 pt-8 text-center text-xs text-stone-500 sm:flex-row sm:text-left">
-          <p>© {year} {t('common.appName')}. {t('home.footerRights')}</p>
-          <p className="text-stone-400">{t('home.tagline')}</p>
+        <div className="mt-10 border-t border-stone-800 pt-8">
+          <div className="flex flex-col items-center justify-between gap-4 text-center text-xs text-stone-500 sm:flex-row sm:text-left">
+            <p>© {year} {t('common.appName')}. {t('home.footerRights')}</p>
+            <p className="text-stone-400">{t('home.tagline')}</p>
+          </div>
+          <div className="mt-4">
+            <BuiltBySection />
+          </div>
         </div>
       </div>
     </footer>

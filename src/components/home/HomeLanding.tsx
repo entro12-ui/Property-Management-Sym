@@ -43,10 +43,10 @@ export function HomeLanding() {
             </p>
             <div className="mt-10 flex flex-col items-stretch justify-center gap-4 sm:flex-row sm:items-center">
               <Link
-                href="/login"
+                href="/signup"
                 className="group inline-flex items-center justify-center gap-2 rounded-xl bg-sky-600 px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-sky-600/25 transition hover:bg-sky-700 hover:shadow-xl hover:shadow-sky-600/30"
               >
-                {t('home.tenantLogin')}
+                {t('home.ownerGetStarted')}
                 <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
               </Link>
               <Link
@@ -56,7 +56,14 @@ export function HomeLanding() {
                 <Building2 className="h-4 w-4" />
                 {t('home.adminLogin')}
               </Link>
+              <Link
+                href="/login"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-8 py-3.5 text-base font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                {t('home.tenantLogin')}
+              </Link>
             </div>
+            <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">{t('home.ownerGetStartedDesc')}</p>
           </div>
 
           {/* Preview card */}
@@ -119,16 +126,22 @@ export function HomeLanding() {
             <p className="mx-auto mt-4 max-w-xl text-sky-100">{t('home.ctaSubtitle')}</p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
-                href="/login"
+                href="/signup"
                 className="inline-flex min-w-[200px] items-center justify-center rounded-xl bg-white px-6 py-3 font-semibold text-sky-700 transition hover:bg-sky-50"
               >
-                {t('home.tenantLogin')}
+                {t('home.ownerGetStarted')}
               </Link>
               <Link
                 href="/admin/login"
                 className="inline-flex min-w-[200px] items-center justify-center rounded-xl border-2 border-white/30 px-6 py-3 font-semibold text-white transition hover:bg-white/10"
               >
                 {t('home.adminLogin')}
+              </Link>
+              <Link
+                href="/login"
+                className="inline-flex min-w-[200px] items-center justify-center rounded-xl border-2 border-white/20 px-6 py-3 font-semibold text-white/90 transition hover:bg-white/10"
+              >
+                {t('home.tenantLogin')}
               </Link>
             </div>
           </div>

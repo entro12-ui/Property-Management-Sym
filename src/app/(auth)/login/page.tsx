@@ -1,16 +1,12 @@
 'use client';
 
 import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { useLocale } from '@/components/providers/LocaleProvider';
 
 function UserLoginContent() {
-  const searchParams = useSearchParams();
   const { t } = useLocale();
-  const successMessage =
-    searchParams.get('registered') === '1' ? t('auth.registeredSuccess') : null;
 
   return (
     <div className="w-full max-w-md">
@@ -20,7 +16,7 @@ function UserLoginContent() {
       >
         {t('common.backToHome')}
       </Link>
-      <LoginForm variant="user" successMessage={successMessage} />
+      <LoginForm variant="user" />
     </div>
   );
 }

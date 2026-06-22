@@ -22,7 +22,7 @@ export default async function NewTenantPage() {
       {users.length === 0 ? (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
           <p className="text-slate-600 dark:text-slate-300">No users available. Every registered user already has a tenant profile.</p>
-          <p className="mt-2 text-sm text-slate-500">Ask new users to sign up first, then assign them to a unit here.</p>
+          <p className="mt-2 text-sm text-slate-500">Create tenant user accounts from User Management, then assign them to a unit here.</p>
           <Link href="/dashboard/tenants" className="mt-4 inline-block text-sky-500 hover:underline">← Back to tenants</Link>
         </div>
       ) : unitOptions.length === 0 ? (

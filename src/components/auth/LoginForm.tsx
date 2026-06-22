@@ -166,13 +166,18 @@ export function LoginForm({ variant, successMessage = null, redirectTo = '/dashb
 
         <div className="mt-8 space-y-3 border-t border-slate-200 pt-6 dark:border-slate-700">
           {isUser && (
+            <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+              {t('auth.tenantAccountNote')}
+            </p>
+          )}
+          {!isUser && (
             <p className="text-center text-sm text-slate-600 dark:text-slate-400">
-              {t('auth.noAccount')}{' '}
+              {t('auth.noOwnerAccount')}{' '}
               <Link
                 href="/signup"
                 className="font-medium text-sky-600 hover:text-sky-700 hover:underline dark:text-sky-400 dark:hover:text-sky-300"
               >
-                {t('auth.signUp')}
+                {t('auth.ownerSignUp')}
               </Link>
             </p>
           )}
