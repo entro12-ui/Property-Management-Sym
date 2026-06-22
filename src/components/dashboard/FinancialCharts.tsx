@@ -14,7 +14,7 @@ function ChartContainer({ children }: { children: React.ReactNode }) {
   useEffect(() => setMounted(true), []);
 
   return (
-    <div className="h-72 w-full min-w-0">
+    <div className="h-56 w-full min-w-0 sm:h-72">
       {mounted ? children : <div className="h-full w-full animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />}
     </div>
   );
@@ -30,7 +30,7 @@ export function CashFlowChart({ data }: { data: CashFlowPoint[] }) {
 
   return (
     <ChartContainer>
-      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={288}>
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={224}>
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
           <XAxis dataKey="name" tick={{ fontSize: 12 }} />
@@ -49,7 +49,7 @@ export function CashFlowChart({ data }: { data: CashFlowPoint[] }) {
 export function FloorOccupancyChart({ data }: { data: FloorPoint[] }) {
   return (
     <ChartContainer>
-      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={288}>
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={224}>
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
           <XAxis dataKey="floor" tick={{ fontSize: 11 }} />

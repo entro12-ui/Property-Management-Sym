@@ -14,8 +14,6 @@ import {
   BarChart3,
   Megaphone,
   Wrench,
-  Menu,
-  X,
   DollarSign,
   Receipt,
   MessageSquare,
@@ -27,7 +25,7 @@ import {
   ClipboardCheck,
   ShieldCheck,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 function isNavItemActive(pathname: string, href: string, allHrefs: string[]): boolean {
   const matches =
@@ -41,9 +39,18 @@ function isNavItemActive(pathname: string, href: string, allHrefs: string[]): bo
   return bestMatch === href;
 }
 
-export function DashboardSidebar({ user, alertCount = 0 }: { user: AuthUser; alertCount?: number }) {
+export function DashboardSidebar({
+  user,
+  alertCount = 0,
+  open,
+  onOpenChange,
+}: {
+  user: AuthUser;
+  alertCount?: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const pathname = usePathname();
-  const [open, setOpen] = useState(false);
   const { t, labels } = useLocale();
 
   const isAdmin =
@@ -121,23 +128,14 @@ export function DashboardSidebar({ user, alertCount = 0 }: { user: AuthUser; ale
 
   return (
     <>
-      <button
-        type="button"
-        className="fixed left-4 top-4 z-50 rounded-xl border border-emerald-700/50 bg-emerald-900 p-2.5 text-emerald-50 shadow-lg shadow-emerald-950/30 transition hover:bg-emerald-800 lg:hidden"
-        onClick={() => setOpen((o) => !o)}
-        aria-label="Toggle menu"
-      >
-        {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </button>
-
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-40 w-64 border-r border-emerald-800/50 bg-gradient-to-b from-emerald-950 via-teal-950 to-emerald-950 shadow-xl shadow-emerald-950/30 lg:static lg:z-0 lg:shadow-none',
+          'fixed inset-y-0 left-0 z-40 w-[min(100vw-3rem,16rem)] max-w-[85vw] border-r border-emerald-800/50 bg-gradient-to-b from-emerald-950 via-teal-950 to-emerald-950 shadow-xl shadow-emerald-950/30 transition-transform duration-200 ease-out lg:static lg:z-0 lg:w-64 lg:max-w-none lg:translate-x-0 lg:shadow-none',
           open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
         <div className="flex h-full flex-col">
-          <div className="border-b border-emerald-800/50 px-5 py-5">
+          <div className="border-b border-emerald-800/50 px-5 py-5 pt-[max(1.25rem,env(safe-area-inset-top))] lg:pt-5">
             <Link href="/dashboard" className="font-semibold text-white">
               {t('common.appName')}
             </Link>
@@ -150,7 +148,7 @@ export function DashboardSidebar({ user, alertCount = 0 }: { user: AuthUser; ale
               <>
                 <Link
                   href="/dashboard"
-                  onClick={() => setOpen(false)}
+                  onClick={() => onOpenChange(false)}
                   className={cn(
                     'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
                     pathname === '/dashboard'
@@ -163,7 +161,7 @@ export function DashboardSidebar({ user, alertCount = 0 }: { user: AuthUser; ale
                 </Link>
                 <Link
                   href="/dashboard/approvals"
-                  onClick={() => setOpen(false)}
+                  onClick={() => onOpenChange(false)}
                   className={cn(
                     'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
                     pathname === '/dashboard/approvals' || pathname.startsWith('/dashboard/approvals/')
@@ -182,7 +180,7 @@ export function DashboardSidebar({ user, alertCount = 0 }: { user: AuthUser; ale
                 {isSuperAdmin && (
                   <Link
                     href="/dashboard/users"
-                    onClick={() => setOpen(false)}
+                    onClick={() => onOpenChange(false)}
                     className={cn(
                       'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
                       pathname === '/dashboard/users' || pathname.startsWith('/dashboard/users/')
@@ -209,7 +207,7 @@ export function DashboardSidebar({ user, alertCount = 0 }: { user: AuthUser; ale
                           <Link
                             key={item.href}
                             href={item.href}
-                            onClick={() => setOpen(false)}
+                            onClick={() => onOpenChange(false)}
                             className={cn(
                               'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
                               active
@@ -238,7 +236,7 @@ export function DashboardSidebar({ user, alertCount = 0 }: { user: AuthUser; ale
                     <Link
                       key={item.href}
                       href={item.href}
-                      onClick={() => setOpen(false)}
+                      onClick={() => onOpenChange(false)}
                       className={cn(
                         'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition',
                         active
@@ -267,7 +265,7 @@ export function DashboardSidebar({ user, alertCount = 0 }: { user: AuthUser; ale
       {open && (
         <div
           className="fixed inset-0 z-30 bg-black/50 lg:hidden"
-          onClick={() => setOpen(false)}
+          onClick={() => onOpenChange(false)}
           aria-hidden
         />
       )}

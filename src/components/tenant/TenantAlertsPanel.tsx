@@ -95,7 +95,7 @@ export function TenantAlertsPanel({
           Rent reminders and announcements sent to your phone.
         </p>
 
-        <div className="mt-5 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+        <div className="mt-5 table-shell">
           {smsLogs.length === 0 ? (
             <div className="p-8 text-center text-sm text-slate-500">No SMS messages recorded yet.</div>
           ) : (

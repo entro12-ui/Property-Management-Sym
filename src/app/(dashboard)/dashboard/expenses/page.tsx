@@ -27,7 +27,7 @@ export default async function ExpensesPage() {
         </div>
       </div>
 
-      <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+      <div className="mt-8 table-shell">
         <ExpenseList expenses={expenses} canApprove={canApprove} />
       </div>
     </div>

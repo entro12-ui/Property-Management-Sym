@@ -77,7 +77,7 @@ export default async function ReportsPage({
       <div className="mt-8 grid gap-8 lg:grid-cols-2">
         <div>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Outstanding invoices</h2>
-          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+          <div className="mt-4 table-shell">
             {outstandingInvoices.length === 0 ? (
               <div className="p-8 text-center text-slate-500">No outstanding invoices.</div>
             ) : (

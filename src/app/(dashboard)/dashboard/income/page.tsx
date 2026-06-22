@@ -35,7 +35,7 @@ export default async function IncomePage() {
         <IncomeForm buildings={buildings} tenants={tenantOptions} />
       </div>
 
-      <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+      <div className="mt-8 table-shell">
         {incomes.length === 0 ? (
           <div className="p-8 text-center text-slate-500">No income records yet.</div>
         ) : (

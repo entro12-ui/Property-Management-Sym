@@ -2,7 +2,7 @@
 
 A professional **building rental management platform** for multi-floor commercial and residential properties. Built with **Next.js 16**, **React 19**, **Tailwind CSS 4**, **PostgreSQL**, **Prisma**, and **NextAuth.js**.
 
-Manage tenants, rooms, quarterly rent, utility bills, expenses, SMS reminders, and financial reports in one secure dashboard — with a dedicated **tenant portal** for invoices, payment proofs, maintenance, and leave requests.
+Manage tenants, rooms, utility bills, expenses, SMS reminders, and financial reports in one secure dashboard — with a dedicated **tenant portal** for payment proofs, maintenance, and leave requests.
 
 ---
 
@@ -37,10 +37,9 @@ Manage tenants, rooms, quarterly rent, utility bills, expenses, SMS reminders, a
 
 ### Billing & invoices
 
-- **Monthly and quarterly** rent invoice generation (bulk or per unit)
 - Invoice categories: **Rent**, **Electricity**, **Water**
 - Invoice lifecycle: Draft → Sent → Partial / Paid / Overdue
-- Record payments on invoice detail pages (admin)
+- Create individual invoices from **Invoices → New invoice**
 - Utility bills appear in the tenant **My Invoices** page (no separate utility page)
 
 ### Payment proof workflow
@@ -245,9 +244,8 @@ Without SMS credentials, messages are logged in dev mode. Only **rent** invoices
 ### Invoicing
 
 1. **Invoices → New invoice** (rent, electricity, or water)
-2. Or bulk generate: monthly / quarterly forms on the Invoices page
-3. Open invoice detail → **Send invoice to tenant** (Draft → Sent)
-4. Tenant sees it under **My Invoices**
+2. Open invoice detail → **Send invoice to tenant** (Draft → Sent)
+3. Tenant sees it under **My Invoices** and can upload payment proof
 
 ---
 

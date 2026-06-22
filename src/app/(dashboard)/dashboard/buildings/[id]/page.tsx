@@ -46,7 +46,7 @@ export default async function BuildingDetailPage({ params }: { params: Promise<{
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         {building.photoUrl && isImageProofUrl(building.photoUrl) && (
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800 lg:col-span-2">
+          <div className="table-shell lg:col-span-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={building.photoUrl}

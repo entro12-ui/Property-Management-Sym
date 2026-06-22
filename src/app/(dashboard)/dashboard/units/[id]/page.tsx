@@ -52,7 +52,7 @@ export default async function UnitDetailPage({ params }: { params: Promise<{ id:
 
       <div className="mt-8">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Recent invoices</h2>
-        <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+        <div className="mt-4 table-shell">
           {unit.invoices && unit.invoices.length > 0 ? (
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-700/50">

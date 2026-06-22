@@ -23,7 +23,7 @@ export default async function UnitsPage() {
         </Link>
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+      <div className="mt-6 table-shell">
         {units.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
             No units yet. Add a building first, then add units.

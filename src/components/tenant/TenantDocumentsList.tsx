@@ -71,7 +71,7 @@ export function TenantDocumentsList({
       {grouped.map(({ type, items }) => (
         <section
           key={type}
-          className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800"
+          className="table-shell"
         >
           <div className="border-b border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-700 dark:bg-slate-700/50">
             <h2 className="font-semibold text-slate-900 dark:text-white">{DOCUMENT_TYPE_LABELS[type]}</h2>

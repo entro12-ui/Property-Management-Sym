@@ -34,7 +34,7 @@ export default async function NotificationsPage() {
         <p className="mt-1">Configure SMS Ethiopia in <Link href="/dashboard/notifications/settings" className="font-medium underline">SMS settings</Link> (or via environment variables).</p>
       </div>
 
-      <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+      <div className="mt-8 table-shell">
         {logs.length === 0 ? (
           <div className="p-8 text-center text-slate-500">No SMS notifications sent yet.</div>
         ) : (

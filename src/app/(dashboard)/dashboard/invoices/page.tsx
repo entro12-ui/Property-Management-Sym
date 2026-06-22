@@ -124,10 +124,10 @@ export default async function InvoicesPage({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Invoices</h1>
-          <p className="mt-1 text-slate-500 dark:text-slate-400">Quarterly and monthly rent invoices</p>
+          <p className="mt-1 text-slate-500 dark:text-slate-400">Bills, payment proofs, and invoice status</p>
         </div>
         {buildings.length > 0 && (
-          <Link href="/dashboard/invoices/new" className="inline-flex items-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-600">
+          <Link href="/dashboard/invoices/new" className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-sky-600 sm:w-auto">
             <Plus className="h-4 w-4" /> New invoice
           </Link>
         )}
@@ -149,7 +149,7 @@ export default async function InvoicesPage({
         ))}
       </div>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+      <div className="mt-6 table-shell">
         {invoices.length === 0 ? (
           <div className="p-12 text-center text-slate-500">No invoices match your filters.</div>
         ) : (

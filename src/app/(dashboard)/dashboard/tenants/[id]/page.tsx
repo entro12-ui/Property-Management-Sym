@@ -100,7 +100,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
         {payments.length === 0 ? (
           <p className="mt-2 text-sm text-slate-500">{t('tenants.noPayments')}</p>
         ) : (
-          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+          <div className="mt-4 table-shell">
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-700">
               <thead className="bg-slate-50 dark:bg-slate-700/50">
                 <tr>

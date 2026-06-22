@@ -73,7 +73,7 @@ export function LeaveRequestPanel({
       )}
 
       {requests.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+        <div className="table-shell">
           <div className="border-b border-slate-200 px-5 py-3 dark:border-slate-700">
             <h2 className="font-semibold text-slate-900 dark:text-white">Request history</h2>
           </div>
