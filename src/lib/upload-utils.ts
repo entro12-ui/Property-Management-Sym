@@ -65,3 +65,14 @@ export function isImageProofUrl(url: string): boolean {
 export function isPdfProofUrl(url: string): boolean {
   return /\.pdf(\?|$)/i.test(url);
 }
+
+/** Detect images when the URL has no extension (e.g. /api/files/db/…). */
+export function isImageProof(fileName: string | null | undefined, fileUrl: string): boolean {
+  if (fileName && /\.(jpe?g|png|webp)$/i.test(fileName)) return true;
+  return isImageProofUrl(fileUrl);
+}
+
+export function isPdfProof(fileName: string | null | undefined, fileUrl: string): boolean {
+  if (fileName && /\.pdf$/i.test(fileName)) return true;
+  return isPdfProofUrl(fileUrl);
+}

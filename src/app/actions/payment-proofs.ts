@@ -6,6 +6,7 @@ import { invoiceWhereForUser, unitWhereForUser } from '@/lib/building-scope';
 import { tenantCanAccessInvoice } from '@/lib/tenant-invoice-scope';
 import { logActivity } from '@/lib/activity-log';
 import { detectPaymentProofType } from '@/lib/upload-utils';
+import { isValidUploadUrl } from '@/lib/stored-files';
 import { extractPaymentProofData } from '@/lib/extract-payment-proof';
 import { revalidatePath } from 'next/cache';
 import type { PaymentProofStatus, PaymentProofType, Prisma } from '@prisma/client';
@@ -185,7 +186,7 @@ export async function submitPaymentProof(formData: FormData): Promise<PaymentPro
       proofType = 'URL';
     } else {
       if (!fileUrl) return { success: false, error: 'Please upload a receipt image or PDF first' };
-      if (!fileUrl.startsWith('/uploads/payment-proof/')) {
+      if (!isValidUploadUrl(fileUrl)) {
         return { success: false, error: 'Invalid upload. Please upload your receipt again.' };
       }
       proofType = detectPaymentProofType(fileName, fileUrl);

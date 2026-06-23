@@ -126,6 +126,32 @@ async function ocrWithSystemTesseract(absolutePath: string): Promise<string | nu
   }
 }
 
+export async function extractTextFromReceiptBuffer(
+  buffer: Buffer,
+  mimeType = 'image/jpeg'
+): Promise<string | null> {
+  const openAiText = await ocrWithOpenAi(buffer, mimeType);
+  if (openAiText && openAiText.length > 20) return openAiText;
+  return null;
+}
+
+export async function extractReceiptFromImageBuffer(
+  buffer: Buffer,
+  mimeType = 'image/jpeg'
+): Promise<ExtractedReceiptData> {
+  const rawText = (await extractTextFromReceiptBuffer(buffer, mimeType)) ?? '';
+  if (!rawText) {
+    return {
+      amount: null,
+      payerName: null,
+      paymentDate: null,
+      transactionId: null,
+      rawText: '',
+    };
+  }
+  return parseCbeReceiptText(rawText);
+}
+
 export async function extractTextFromReceiptFile(
   absolutePath: string,
   mimeType = 'image/jpeg'

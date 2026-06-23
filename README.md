@@ -236,7 +236,7 @@ Uploaded receipts are stored on disk. On Render, the filesystem is **ephemeral**
 2. Set environment variable: `UPLOAD_DIR=/var/data/uploads`
 3. Redeploy
 
-Without a disk, tenants can upload proofs but files may disappear after the next deploy.
+Without a disk, tenants can upload proofs but files may disappear after the next deploy. **As of the latest version, uploads are stored in PostgreSQL** (`stored_files` table) so receipts survive redeploys without a disk. Run `npm run db:sync` after deploying this update.
 
 ### Build & start commands
 
@@ -363,7 +363,7 @@ Invoices-samples/        # Sample CBE receipt images for testing
 | Issue | What to do |
 |-------|------------|
 | Redirect to `localhost:3000/login` after sign-in (Render) | Set `NEXTAUTH_URL=https://your-app.onrender.com` and `AUTH_TRUST_HOST=true` in Render env vars, then redeploy |
-| Uploaded receipts return 404 or vanish (Render) | Add a persistent disk and set `UPLOAD_DIR=/var/data/uploads` |
+| Uploaded receipts return 404 or vanish (Render) | Deploy latest code, run `npm run db:sync`, then **re-upload** receipts (old disk-only files cannot be recovered). New uploads are stored in the database. |
 | `Can't reach database server` (Render) | Wake Postgres on Render dashboard; verify `DATABASE_URL` |
 | `Decimal objects are not supported` in dev | Restart dev server after updates; run `rm -rf .next && npm run dev` |
 | Receipt scan finds nothing | Set `OPENAI_API_KEY`, or enter amount/details manually |

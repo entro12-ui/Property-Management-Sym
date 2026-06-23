@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
 import { logger } from '@/lib/logger';
-import { getUploadDir, getUploadUrl } from '@/lib/upload-storage';
 import {
   paymentProofExtension,
   validatePaymentProofFile,
   validateBuildingPhotoFile,
   buildingPhotoExtension,
 } from '@/lib/upload-utils';
+import { mimeTypeFromFileName, saveStoredFile } from '@/lib/stored-files';
+
 const ALLOWED_TYPES = ['tenant-doc', 'receipt', 'expense', 'payment-proof', 'building-photo'] as const;
 
 export async function POST(request: NextRequest) {
@@ -39,24 +38,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const dir = path.join(getUploadDir(), type);
-    await mkdir(dir, { recursive: true });
-
     const ext =
       type === 'payment-proof'
         ? paymentProofExtension(file)
         : type === 'building-photo'
           ? buildingPhotoExtension(file)
-          : path.extname(file.name) || '.pdf';
+          : file.name.includes('.')
+            ? file.name.slice(file.name.lastIndexOf('.')).toLowerCase()
+            : '.pdf';
 
     const safeBase = file.name.replace(/[^\w.\-]+/g, '_').slice(0, 80);
-    const name = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-    const filePath = path.join(dir, name);
+    const fileName = file.name || `${safeBase}${ext}`;
+    const mimeType = file.type || mimeTypeFromFileName(fileName);
     const bytes = await file.arrayBuffer();
-    await writeFile(filePath, Buffer.from(bytes));
+    const stored = await saveStoredFile(Buffer.from(bytes), fileName, mimeType);
 
-    const url = getUploadUrl(type, name);
-    return NextResponse.json({ url, fileName: file.name || safeBase });
+    return NextResponse.json({ url: stored.url, fileName: stored.fileName });
   } catch (e) {
     logger.error('File upload failed', e);
     return NextResponse.json({ error: 'Upload failed' }, { status: 500 });

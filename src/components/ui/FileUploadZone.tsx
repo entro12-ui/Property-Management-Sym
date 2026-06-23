@@ -4,7 +4,7 @@ import { useCallback, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useLocale } from '@/components/providers/LocaleProvider';
 import { CheckCircle2, FileText, ImageIcon, Loader2, UploadCloud, X, AlertCircle } from 'lucide-react';
-import { isImageProofUrl } from '@/lib/upload-utils';
+import { isImageProof } from '@/lib/upload-utils';
 
 export type FileUploadZoneProps = {
   label: string;
@@ -82,7 +82,7 @@ export function FileUploadZone({
   }
 
   const displayName = fileName ?? lastFile?.name;
-  const showImagePreview = Boolean(fileUrl && isImageProofUrl(fileUrl));
+  const showImagePreview = Boolean(fileUrl && isImageProof(displayName, fileUrl));
 
   return (
     <div className="space-y-2">
@@ -100,7 +100,7 @@ export function FileUploadZone({
             </div>
           ) : (
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 dark:bg-emerald-900/50 dark:text-emerald-400">
-              {fileUrl && isImageProofUrl(fileUrl) ? (
+              {fileUrl && isImageProof(displayName, fileUrl) ? (
                 <ImageIcon className="h-5 w-5" />
               ) : (
                 <FileText className="h-5 w-5" />

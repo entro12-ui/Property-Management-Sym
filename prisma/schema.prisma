@@ -567,3 +567,14 @@ model LeaveRequest {
   unit       Unit          @relation(fields: [unitId], references: [id], onDelete: Cascade)
   reviewedBy User?         @relation("LeaveRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
 }
+
+/** Binary uploads stored in PostgreSQL (survives Render redeploys). */
+model StoredFile {
+  id        String   @id @default(cuid())
+  mimeType  String   @map("mime_type")
+  fileName  String   @map("file_name")
+  data      Bytes
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("stored_files")
+}

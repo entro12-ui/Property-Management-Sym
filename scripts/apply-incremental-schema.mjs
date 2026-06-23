@@ -213,6 +213,15 @@ const statements = [
     CONSTRAINT "LeaveRequest_pkey" PRIMARY KEY ("id")
   )`,
 
+  `CREATE TABLE IF NOT EXISTS "stored_files" (
+    "id" TEXT NOT NULL,
+    "mime_type" TEXT NOT NULL,
+    "file_name" TEXT NOT NULL,
+    "data" BYTEA NOT NULL,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "stored_files_pkey" PRIMARY KEY ("id")
+  )`,
+
   // --- Foreign keys (ignore if exist) ---
   `DO $$ BEGIN
     ALTER TABLE "TenantDocument" ADD CONSTRAINT "TenantDocument_tenant_id_fkey"

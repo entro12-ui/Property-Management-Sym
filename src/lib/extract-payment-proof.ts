@@ -1,14 +1,7 @@
-import path from 'path';
 import { prisma } from '@/lib/db';
-import { extractReceiptFromImagePath, parseCbeReceiptText } from '@/lib/receipt-extraction';
-import { isImageProofUrl } from '@/lib/upload-utils';
-
-function mimeFromPath(filePath: string): string {
-  const lower = filePath.toLowerCase();
-  if (lower.endsWith('.png')) return 'image/png';
-  if (lower.endsWith('.webp')) return 'image/webp';
-  return 'image/jpeg';
-}
+import { extractReceiptFromImageBuffer, parseCbeReceiptText } from '@/lib/receipt-extraction';
+import { isImageProof } from '@/lib/upload-utils';
+import { resolveUploadBytes } from '@/lib/stored-files';
 
 export async function extractPaymentProofData(proofId: string) {
   const proof = await prisma.invoicePaymentProof.findUniqueOrThrow({
@@ -16,6 +9,7 @@ export async function extractPaymentProofData(proofId: string) {
     select: {
       id: true,
       fileUrl: true,
+      fileName: true,
       billingUrl: true,
       extractionStatus: true,
       extractedAmount: true,
@@ -26,7 +20,7 @@ export async function extractPaymentProofData(proofId: string) {
     return proof;
   }
 
-  if (!proof.fileUrl || !isImageProofUrl(proof.fileUrl)) {
+  if (!proof.fileUrl || !isImageProof(proof.fileName, proof.fileUrl)) {
     await prisma.invoicePaymentProof.update({
       where: { id: proofId },
       data: { extractionStatus: 'FAILED' },
@@ -34,10 +28,17 @@ export async function extractPaymentProofData(proofId: string) {
     return null;
   }
 
-  const absolutePath = path.join(process.cwd(), 'public', proof.fileUrl.replace(/^\//, ''));
+  const file = await resolveUploadBytes(proof.fileUrl);
+  if (!file) {
+    await prisma.invoicePaymentProof.update({
+      where: { id: proofId },
+      data: { extractionStatus: 'FAILED' },
+    });
+    return null;
+  }
 
   try {
-    const extracted = await extractReceiptFromImagePath(absolutePath, mimeFromPath(absolutePath));
+    const extracted = await extractReceiptFromImageBuffer(file.buffer, file.mimeType);
 
     const hasData =
       extracted.amount != null ||
