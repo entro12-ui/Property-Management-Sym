@@ -79,24 +79,39 @@ export async function getFinancialSummary(year: number, month?: number) {
 
 export async function getMonthlyCashFlow(year: number) {
   await requireRole(ADMIN_ROLES);
-  const months: { month: number; income: number; expenses: number }[] = [];
+  const start = new Date(year, 0, 1);
+  const end = new Date(year, 11, 31);
 
-  for (let m = 1; m <= 12; m++) {
-    const start = new Date(year, m - 1, 1);
-    const end = new Date(year, m, 0);
-    const [payments, incomes, expenses] = await Promise.all([
-      prisma.payment.aggregate({ where: { paidAt: { gte: start, lte: end } }, _sum: { amount: true } }),
-      prisma.income.aggregate({ where: { incomeDate: { gte: start, lte: end } }, _sum: { amount: true } }),
-      prisma.expense.aggregate({
-        where: { expenseDate: { gte: start, lte: end }, approvalStatus: 'APPROVED' },
-        _sum: { amount: true },
-      }),
-    ]);
-    months.push({
-      month: m,
-      income: Number(payments._sum.amount ?? 0) + Number(incomes._sum.amount ?? 0),
-      expenses: Number(expenses._sum.amount ?? 0),
-    });
+  const [payments, incomes, expenses] = await Promise.all([
+    prisma.payment.findMany({
+      where: { paidAt: { gte: start, lte: end } },
+      select: { paidAt: true, amount: true },
+    }),
+    prisma.income.findMany({
+      where: { incomeDate: { gte: start, lte: end } },
+      select: { incomeDate: true, amount: true },
+    }),
+    prisma.expense.findMany({
+      where: { expenseDate: { gte: start, lte: end }, approvalStatus: 'APPROVED' },
+      select: { expenseDate: true, amount: true },
+    }),
+  ]);
+
+  const months = Array.from({ length: 12 }, (_, i) => ({
+    month: i + 1,
+    income: 0,
+    expenses: 0,
+  }));
+
+  for (const payment of payments) {
+    months[new Date(payment.paidAt).getMonth()].income += Number(payment.amount);
   }
+  for (const income of incomes) {
+    months[new Date(income.incomeDate).getMonth()].income += Number(income.amount);
+  }
+  for (const expense of expenses) {
+    months[new Date(expense.expenseDate).getMonth()].expenses += Number(expense.amount);
+  }
+
   return months;
 }

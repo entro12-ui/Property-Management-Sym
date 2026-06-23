@@ -46,6 +46,28 @@ export function CashFlowChart({ data }: { data: CashFlowPoint[] }) {
   );
 }
 
+type BreakdownPoint = { name: string; amount: number };
+
+export function BreakdownChart({ data, color = '#0ea5e9' }: { data: BreakdownPoint[]; color?: string }) {
+  if (data.length === 0) {
+    return <p className="py-8 text-center text-sm text-slate-500">No data for this period.</p>;
+  }
+
+  return (
+    <ChartContainer>
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={224}>
+        <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16 }}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200 dark:stroke-slate-700" />
+          <XAxis type="number" tick={{ fontSize: 11 }} tickFormatter={(v) => formatCurrency(v)} />
+          <YAxis type="category" dataKey="name" width={120} tick={{ fontSize: 11 }} />
+          <Tooltip formatter={(v) => formatCurrency(Number(v))} />
+          <Bar dataKey="amount" fill={color} name="Amount" radius={[0, 4, 4, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartContainer>
+  );
+}
+
 export function FloorOccupancyChart({ data }: { data: FloorPoint[] }) {
   return (
     <ChartContainer>

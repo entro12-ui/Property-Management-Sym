@@ -26,9 +26,8 @@ function getPrismaClient(): PrismaClient {
   }
 
   const client = createPrismaClient();
-  if (process.env.NODE_ENV !== 'production') {
-    globalForPrisma.prisma = client;
-  }
+  // Reuse one client in all environments to avoid exhausting DB connections on Render.
+  globalForPrisma.prisma = client;
   return client;
 }
 
