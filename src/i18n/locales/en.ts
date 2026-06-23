@@ -224,6 +224,7 @@ export const en = {
     tenantInfoHint: 'Basic contact details for this tenant.',
     fullName: 'Full name',
     nationalId: 'National ID number',
+    tinNumber: 'TIN number',
     occupation: 'Occupation / Organization',
     businessType: 'Business type',
     tenantStatus: 'Tenant status',
@@ -238,6 +239,9 @@ export const en = {
     nationalIdDocHint: 'Government-issued ID (front or combined scan).',
     leaseAgreement: 'Lease agreement',
     leaseAgreementHint: 'Signed rental or lease contract (PDF recommended).',
+    license: 'License',
+    licenseHint: 'Business or trade license (PDF or image).',
+    licenseFile: 'License file →',
     saveChanges: 'Save changes',
     selectUser: 'Select user',
     selectRoom: 'Select room',
@@ -340,6 +344,7 @@ export const en = {
     uploadedBy: 'uploaded by',
     existingId: 'Existing ID document',
     existingLease: 'Existing lease agreement',
+    existingLicense: 'Existing license',
   },
   labels: {
     role: {

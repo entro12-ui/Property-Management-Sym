@@ -226,6 +226,7 @@ export const am: TranslationDict = {
     tenantInfoHint: 'ለዚህ ተከራይ መሠረታዊ የእውቂያ ዝርዝሮች።',
     fullName: 'ሙሉ ስም',
     nationalId: 'የብሔራዊ መታወቂያ ቁጥር',
+    tinNumber: 'የቲን ቁጥር',
     occupation: 'ሙያ / ድርጅት',
     businessType: 'የንግድ አይነት',
     tenantStatus: 'የተከራይ ሁኔታ',
@@ -240,6 +241,9 @@ export const am: TranslationDict = {
     nationalIdDocHint: 'የመንግስት መታወቂያ (ፊት ወይም ሙሉ)።',
     leaseAgreement: 'የኪራይ ስምምነት',
     leaseAgreementHint: 'የተፈረመ የኪራይ ውል (PDF የተሻለ)።',
+    license: 'ፈቃድ',
+    licenseHint: 'የንግድ ወይም የንግድ ፈቃድ (PDF ወይም ምስል)።',
+    licenseFile: 'የፈቃድ ፋይል →',
     saveChanges: 'ለውጦችን አስቀምጥ',
     selectUser: 'ተጠቃሚ ይምረጡ',
     selectRoom: 'ክፍል ይምረጡ',
@@ -342,6 +346,7 @@ export const am: TranslationDict = {
     uploadedBy: 'የሰቀለው',
     existingId: 'ያለው የመታወቂያ ሰነድ',
     existingLease: 'ያለው የኪራይ ስምምነት',
+    existingLicense: 'ያለው ፈቃድ',
   },
   labels: {
     role: {

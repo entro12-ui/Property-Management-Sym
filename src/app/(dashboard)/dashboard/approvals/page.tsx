@@ -1,9 +1,17 @@
 import { getAdminPendingApprovals } from '@/app/actions/admin-notifications';
+import { getInvoices } from '@/app/actions/invoices';
 import { AdminApprovalsPanel } from '@/components/admin/AdminApprovalsPanel';
+import { AdminPaymentProofPanel } from '@/components/invoices/AdminPaymentProofPanel';
+import { toLinkableInvoices } from '@/lib/serialize-client';
 import { Bell } from 'lucide-react';
 
 export default async function AdminApprovalsPage() {
-  const data = await getAdminPendingApprovals();
+  const [data, invoices] = await Promise.all([
+    getAdminPendingApprovals(),
+    getInvoices().catch(() => []),
+  ]);
+
+  const linkableInvoices = toLinkableInvoices(invoices);
   const total =
     data.paymentProofs.length + data.leaveRequests.length + data.maintenanceRequests.length;
 
@@ -25,8 +33,18 @@ export default async function AdminApprovalsPage() {
           </span>
         )}
       </div>
-      <div className="mt-6">
-        <AdminApprovalsPanel {...data} />
+
+      <div className="mt-6 space-y-8">
+        {data.permissions.paymentProofs && data.paymentProofs.length > 0 && (
+          <AdminPaymentProofPanel proofs={data.paymentProofs} invoices={linkableInvoices} />
+        )}
+
+        <AdminApprovalsPanel
+          leaveRequests={data.leaveRequests}
+          maintenanceRequests={data.maintenanceRequests}
+          permissions={data.permissions}
+          paymentProofCount={data.paymentProofs.length}
+        />
       </div>
     </div>
   );

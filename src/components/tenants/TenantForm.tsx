@@ -19,6 +19,7 @@ type TenantFormProps = {
     phone: string | null;
     address: string | null;
     nationalId: string | null;
+    tinNumber: string | null;
     occupation: string | null;
     businessType: string | null;
     tenantStatus: TenantStatus;
@@ -28,6 +29,7 @@ type TenantFormProps = {
     moveOutDate: Date | null;
     idDocumentUrl: string | null;
     leaseAgreementUrl: string | null;
+    licenseUrl: string | null;
     userId: string;
     unitId: string | null;
   };
@@ -45,11 +47,15 @@ export function TenantForm({ users, units, tenant, submitLabel }: TenantFormProp
   const { t, labels } = useLocale();
   const [idDocUrl, setIdDocUrl] = useState(tenant?.idDocumentUrl ?? '');
   const [leaseUrl, setLeaseUrl] = useState(tenant?.leaseAgreementUrl ?? '');
+  const [licenseUrl, setLicenseUrl] = useState(tenant?.licenseUrl ?? '');
   const [idDocName, setIdDocName] = useState<string | null>(
     tenant?.idDocumentUrl ? t('upload.existingId') : null
   );
   const [leaseName, setLeaseName] = useState<string | null>(
     tenant?.leaseAgreementUrl ? t('upload.existingLease') : null
+  );
+  const [licenseName, setLicenseName] = useState<string | null>(
+    tenant?.licenseUrl ? t('upload.existingLicense') : null
   );
 
   async function uploadFile(file: File): Promise<string> {
@@ -67,6 +73,7 @@ export function TenantForm({ users, units, tenant, submitLabel }: TenantFormProp
       action={async (fd) => {
         if (idDocUrl) fd.set('idDocumentUrl', idDocUrl);
         if (leaseUrl) fd.set('leaseAgreementUrl', leaseUrl);
+        if (licenseUrl) fd.set('licenseUrl', licenseUrl);
         if (tenant?.id) await updateTenant(tenant.id, fd);
         else await createTenant(fd);
       }}
@@ -149,6 +156,10 @@ export function TenantForm({ users, units, tenant, submitLabel }: TenantFormProp
           <input name="nationalId" defaultValue={tenant?.nationalId ?? ''} className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" />
         </div>
         <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('tenants.tinNumber')}</label>
+          <input name="tinNumber" defaultValue={tenant?.tinNumber ?? ''} className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" />
+        </div>
+        <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('tenants.occupation')}</label>
           <input name="occupation" defaultValue={tenant?.occupation ?? ''} className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white" />
         </div>
@@ -195,7 +206,7 @@ export function TenantForm({ users, units, tenant, submitLabel }: TenantFormProp
             <p className="text-xs text-slate-500 dark:text-slate-400">{t('tenants.tenantDocumentsHint')}</p>
           </div>
         </div>
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid gap-5 lg:grid-cols-3">
           <FileUploadZone
             label={t('tenants.nationalIdDoc')}
             description={t('tenants.nationalIdDocHint')}
@@ -226,6 +237,22 @@ export function TenantForm({ users, units, tenant, submitLabel }: TenantFormProp
             onRemove={() => {
               setLeaseUrl('');
               setLeaseName(null);
+            }}
+          />
+          <FileUploadZone
+            label={t('tenants.license')}
+            description={t('tenants.licenseHint')}
+            accept=".pdf,image/jpeg,image/png,image/jpg"
+            fileUrl={licenseUrl || null}
+            fileName={licenseName}
+            onUpload={async (file) => {
+              const url = await uploadFile(file);
+              setLicenseUrl(url);
+              setLicenseName(file.name);
+            }}
+            onRemove={() => {
+              setLicenseUrl('');
+              setLicenseName(null);
             }}
           />
         </div>

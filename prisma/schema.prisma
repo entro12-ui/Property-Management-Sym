@@ -150,11 +150,13 @@ model TenantProfile {
   unitId            String?       @unique @map("unit_id")
   address           String?
   nationalId        String?       @map("national_id")
+  tinNumber         String?       @map("tin_number")
   occupation        String?
   businessType      String?       @map("business_type")
   tenantStatus      TenantStatus  @default(ACTIVE) @map("tenant_status")
   idDocumentUrl     String?       @map("id_document_url")
   leaseAgreementUrl String?       @map("lease_agreement_url")
+  licenseUrl        String?       @map("license_url")
   emergencyContact  String?       @map("emergency_contact")
   emergencyPhone    String?       @map("emergency_phone")
   moveInDate        DateTime?     @map("move_in_date") @db.Date

@@ -151,13 +151,14 @@ export async function GET(request: NextRequest) {
       doc.text('Tenant Roster', 14, 20);
       autoTable(doc, {
         startY: 28,
-        head: [['Name', 'Room', 'Phone', 'Status', 'National ID']],
+        head: [['Name', 'Room', 'Phone', 'Status', 'National ID', 'TIN']],
         body: tenants.map((t) => [
           t.user.fullName,
           t.unit ? `${t.unit.building.name} - ${t.unit.unitNumber}` : '—',
           t.user.phone ?? '',
           t.tenantStatus,
           t.nationalId ?? '',
+          t.tinNumber ?? '',
         ]),
       });
       const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
@@ -171,7 +172,7 @@ export async function GET(request: NextRequest) {
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Tenants');
-    sheet.addRow(['Name', 'Email', 'Phone', 'Room', 'Floor', 'Status', 'National ID', 'Occupation']);
+    sheet.addRow(['Name', 'Email', 'Phone', 'Room', 'Floor', 'Status', 'National ID', 'TIN', 'Occupation']);
     for (const t of tenants) {
       sheet.addRow([
         t.user.fullName,
@@ -181,6 +182,7 @@ export async function GET(request: NextRequest) {
         t.unit?.floorNumber ?? '',
         t.tenantStatus,
         t.nationalId ?? '',
+        t.tinNumber ?? '',
         t.occupation ?? '',
       ]);
     }

@@ -175,3 +175,8 @@ export async function reviewLeaveRequest(
   revalidatePath('/dashboard/alerts');
   return { success: true };
 }
+
+/** Form action wrapper — returns void for use in client component forms. */
+export async function submitLeaveReview(id: string, formData: FormData): Promise<void> {
+  await reviewLeaveRequest(id, formData);
+}

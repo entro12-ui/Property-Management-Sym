@@ -41,6 +41,8 @@ const statements = [
   // --- TenantProfile ---
   `ALTER TABLE "TenantProfile" ADD COLUMN IF NOT EXISTS "address" TEXT`,
   `ALTER TABLE "TenantProfile" ADD COLUMN IF NOT EXISTS "national_id" TEXT`,
+  `ALTER TABLE "TenantProfile" ADD COLUMN IF NOT EXISTS "tin_number" TEXT`,
+  `ALTER TABLE "TenantProfile" ADD COLUMN IF NOT EXISTS "license_url" TEXT`,
   `ALTER TABLE "TenantProfile" ADD COLUMN IF NOT EXISTS "occupation" TEXT`,
   `ALTER TABLE "TenantProfile" ADD COLUMN IF NOT EXISTS "tenant_status" "TenantStatus" DEFAULT 'ACTIVE'`,
 

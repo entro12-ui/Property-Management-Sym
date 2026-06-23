@@ -127,7 +127,13 @@ export async function getAdminPendingApprovals() {
       requestedMoveOutDate: req.requestedMoveOutDate.toISOString().slice(0, 10),
       reason: req.reason,
       createdAt: req.createdAt.toISOString(),
-      tenant: req.tenant,
+      tenant: {
+        user: {
+          fullName: req.tenant.user.fullName,
+          email: req.tenant.user.email,
+          phone: req.tenant.user.phone,
+        },
+      },
       unit: serializeUnitRefForClient(req.unit),
     })),
     maintenanceRequests: maintenanceRequests.map((req) => ({

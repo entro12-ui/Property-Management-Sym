@@ -3,12 +3,10 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useFormStatus } from 'react-dom';
-import { reviewLeaveRequest } from '@/app/actions/leave-requests';
+import { submitLeaveReview } from '@/app/actions/leave-requests';
 import { reviewMaintenanceRequest } from '@/app/actions/maintenance';
-import { PaymentProofAdminReview } from '@/components/invoices/PaymentProofAdminReview';
 import { formatDate } from '@/lib/utils';
 import { URGENCY_LABELS } from '@/types';
-import type { ClientPaymentProof } from '@/lib/serialize-client';
 import {
   Bell,
   CalendarOff,
@@ -48,27 +46,27 @@ const urgencyTone: Record<string, string> = {
 };
 
 export function AdminApprovalsPanel({
-  paymentProofs,
   leaveRequests,
   maintenanceRequests,
   permissions,
+  paymentProofCount = 0,
 }: {
-  paymentProofs: ClientPaymentProof[];
   leaveRequests: LeaveRequestRow[];
   maintenanceRequests: MaintenanceRequestRow[];
   permissions: { paymentProofs: boolean; leave: boolean; maintenance: boolean };
+  paymentProofCount?: number;
 }) {
   const [filter, setFilter] = useState<Filter>('all');
 
   const total =
-    (permissions.paymentProofs ? paymentProofs.length : 0) +
+    (permissions.paymentProofs ? paymentProofCount : 0) +
     (permissions.leave ? leaveRequests.length : 0) +
     (permissions.maintenance ? maintenanceRequests.length : 0);
 
   const filters = useMemo(() => {
     const items: { id: Filter; label: string; count: number }[] = [{ id: 'all', label: 'All', count: total }];
     if (permissions.paymentProofs) {
-      items.push({ id: 'payment', label: 'Payment proofs', count: paymentProofs.length });
+      items.push({ id: 'payment', label: 'Payment proofs', count: paymentProofCount });
     }
     if (permissions.leave) {
       items.push({ id: 'leave', label: 'Leave requests', count: leaveRequests.length });
@@ -77,7 +75,7 @@ export function AdminApprovalsPanel({
       items.push({ id: 'maintenance', label: 'Maintenance', count: maintenanceRequests.length });
     }
     return items;
-  }, [permissions, total, paymentProofs.length, leaveRequests.length, maintenanceRequests.length]);
+  }, [permissions, total, paymentProofCount, leaveRequests.length, maintenanceRequests.length]);
 
   const showPayment = filter === 'all' || filter === 'payment';
   const showLeave = filter === 'all' || filter === 'leave';
@@ -90,7 +88,7 @@ export function AdminApprovalsPanel({
           <SummaryCard
             icon={CreditCard}
             label="Payment proofs"
-            count={paymentProofs.length}
+            count={paymentProofCount}
             tone="amber"
             active={filter === 'payment'}
             onClick={() => setFilter('payment')}
@@ -148,38 +146,10 @@ export function AdminApprovalsPanel({
         </div>
       ) : (
         <div className="space-y-8">
-          {permissions.paymentProofs && showPayment && paymentProofs.length > 0 && (
-            <section>
-              <SectionHeader icon={CreditCard} title="Payment proof submissions" count={paymentProofs.length} />
-              <div className="mt-4 space-y-4">
-                {paymentProofs.map((proof) => (
-                  <NotificationCard
-                    key={proof.id}
-                    badge="Payment proof"
-                    badgeTone="amber"
-                    title={proof.tenant?.user.fullName ?? proof.submittedBy.fullName}
-                    subtitle={
-                      proof.tenant?.unit
-                        ? `${proof.tenant.unit.building.name} · Room ${proof.tenant.unit.unitNumber}`
-                        : proof.invoice
-                          ? `${proof.invoice.unit.building.name} · Room ${proof.invoice.unit.unitNumber}`
-                          : undefined
-                    }
-                    submittedAt={proof.createdAt}
-                    footer={
-                      <Link
-                        href="/dashboard/invoices"
-                        className="text-xs font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
-                      >
-                        View all on Invoices page →
-                      </Link>
-                    }
-                  >
-                    <PaymentProofAdminReview proof={proof} />
-                  </NotificationCard>
-                ))}
-              </div>
-            </section>
+          {permissions.paymentProofs && showPayment && paymentProofCount > 0 && (
+            <div className="rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+              Payment proofs are listed above. Use the review panel to scan receipts, link invoices, and approve payments.
+            </div>
           )}
 
           {permissions.leave && showLeave && leaveRequests.length > 0 && (
@@ -206,9 +176,7 @@ export function AdminApprovalsPanel({
                       )}
                     </div>
                     <form
-                      action={async (formData) => {
-                        await reviewLeaveRequest(req.id, formData);
-                      }}
+                      action={submitLeaveReview.bind(null, req.id)}
                       className="mt-4 space-y-3 border-t border-slate-200 pt-4 dark:border-slate-700"
                     >
                       <textarea
@@ -288,7 +256,7 @@ export function AdminApprovalsPanel({
           )}
 
           {filter !== 'all' &&
-            ((filter === 'payment' && paymentProofs.length === 0) ||
+            ((filter === 'payment' && paymentProofCount === 0) ||
               (filter === 'leave' && leaveRequests.length === 0) ||
               (filter === 'maintenance' && maintenanceRequests.length === 0)) && (
               <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-800">

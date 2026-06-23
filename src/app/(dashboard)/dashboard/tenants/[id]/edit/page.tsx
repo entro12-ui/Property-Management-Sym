@@ -22,6 +22,7 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
             phone: tenant.user.phone,
             address: tenant.address,
             nationalId: tenant.nationalId,
+            tinNumber: tenant.tinNumber,
             occupation: tenant.occupation,
             businessType: tenant.businessType,
             tenantStatus: tenant.tenantStatus,
@@ -31,6 +32,7 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
             moveOutDate: tenant.moveOutDate,
             idDocumentUrl: tenant.idDocumentUrl,
             leaseAgreementUrl: tenant.leaseAgreementUrl,
+            licenseUrl: tenant.licenseUrl,
             userId: tenant.userId,
             unitId: tenant.unitId,
           }}

@@ -37,6 +37,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
             <div><dt className="text-slate-500">{t('common.phone')}</dt><dd>{tenant.user.phone ?? '—'}</dd></div>
             <div><dt className="text-slate-500">{t('common.address')}</dt><dd>{tenant.address ?? '—'}</dd></div>
             <div><dt className="text-slate-500">{t('tenants.nationalId')}</dt><dd>{tenant.nationalId ?? '—'}</dd></div>
+            <div><dt className="text-slate-500">{t('tenants.tinNumber')}</dt><dd>{tenant.tinNumber ?? '—'}</dd></div>
             <div><dt className="text-slate-500">{t('tenants.occupation')}</dt><dd>{tenant.occupation ?? '—'}</dd></div>
             <div><dt className="text-slate-500">{t('tenants.emergencyContact')}</dt><dd>{tenant.emergencyContact ?? '—'}</dd></div>
             <div><dt className="text-slate-500">{t('tenants.emergencyPhone')}</dt><dd>{tenant.emergencyPhone ?? '—'}</dd></div>
@@ -55,7 +56,7 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
       <div id="documents" className="mt-6 scroll-mt-6 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
         <h2 className="font-semibold text-slate-900 dark:text-white">{t('tenants.leaseDocuments')}</h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('tenants.leaseDocumentsHint')}</p>
-        {(tenant.leaseAgreementUrl || tenant.idDocumentUrl) && (
+        {(tenant.leaseAgreementUrl || tenant.idDocumentUrl || tenant.licenseUrl) && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm dark:border-amber-900/50 dark:bg-amber-950/30">
             <p className="font-medium text-amber-900 dark:text-amber-200">{t('tenants.previouslyUploaded')}</p>
             <ul className="mt-2 space-y-1">
@@ -70,6 +71,13 @@ export default async function TenantDetailPage({ params }: { params: Promise<{ i
                 <li>
                   <a href={tenant.idDocumentUrl} target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline dark:text-sky-400">
                     {t('tenants.idDocumentFile')}
+                  </a>
+                </li>
+              )}
+              {tenant.licenseUrl && (
+                <li>
+                  <a href={tenant.licenseUrl} target="_blank" rel="noopener noreferrer" className="text-sky-600 hover:underline dark:text-sky-400">
+                    {t('tenants.licenseFile')}
                   </a>
                 </li>
               )}

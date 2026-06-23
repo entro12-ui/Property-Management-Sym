@@ -59,6 +59,7 @@ export async function createTenant(formData: FormData) {
   const unitId = formData.get('unitId') as string;
   const address = (formData.get('address') as string) || undefined;
   const nationalId = (formData.get('nationalId') as string) || undefined;
+  const tinNumber = (formData.get('tinNumber') as string) || undefined;
   const occupation = (formData.get('occupation') as string) || undefined;
   const businessType = (formData.get('businessType') as string) || undefined;
   const tenantStatus = (formData.get('tenantStatus') as 'ACTIVE' | 'PENDING') || 'ACTIVE';
@@ -68,6 +69,7 @@ export async function createTenant(formData: FormData) {
   const moveOutDate = formData.get('moveOutDate') ? new Date(formData.get('moveOutDate') as string) : undefined;
   const idDocumentUrl = (formData.get('idDocumentUrl') as string) || undefined;
   const leaseAgreementUrl = (formData.get('leaseAgreementUrl') as string) || undefined;
+  const licenseUrl = (formData.get('licenseUrl') as string) || undefined;
 
   const profile = await prisma.$transaction(async (tx) => {
     const created = await tx.tenantProfile.create({
@@ -76,6 +78,7 @@ export async function createTenant(formData: FormData) {
         unitId,
         address,
         nationalId,
+        tinNumber,
         occupation,
         businessType,
         tenantStatus,
@@ -85,6 +88,7 @@ export async function createTenant(formData: FormData) {
         moveOutDate,
         idDocumentUrl,
         leaseAgreementUrl,
+        licenseUrl,
       },
     });
     await tx.unit.update({ where: { id: unitId }, data: { status: 'OCCUPIED' } });
@@ -117,6 +121,7 @@ export async function updateTenant(id: string, formData: FormData) {
   const phone = (formData.get('phone') as string)?.trim() || undefined;
   const address = (formData.get('address') as string) || undefined;
   const nationalId = (formData.get('nationalId') as string) || undefined;
+  const tinNumber = (formData.get('tinNumber') as string) || undefined;
   const occupation = (formData.get('occupation') as string) || undefined;
   const businessType = (formData.get('businessType') as string) || undefined;
   const tenantStatus = formData.get('tenantStatus') as 'ACTIVE' | 'PENDING' | 'VACATED' | 'SUSPENDED';
@@ -126,6 +131,7 @@ export async function updateTenant(id: string, formData: FormData) {
   const moveOutDate = formData.get('moveOutDate') ? new Date(formData.get('moveOutDate') as string) : undefined;
   const idDocumentUrl = (formData.get('idDocumentUrl') as string) || undefined;
   const leaseAgreementUrl = (formData.get('leaseAgreementUrl') as string) || undefined;
+  const licenseUrl = (formData.get('licenseUrl') as string) || undefined;
 
   const existing = await prisma.tenantProfile.findUniqueOrThrow({ where: { id } });
 
@@ -141,6 +147,7 @@ export async function updateTenant(id: string, formData: FormData) {
     data: {
       address,
       nationalId,
+      tinNumber,
       occupation,
       businessType,
       tenantStatus,
@@ -150,6 +157,7 @@ export async function updateTenant(id: string, formData: FormData) {
       moveOutDate,
       idDocumentUrl: idDocumentUrl || undefined,
       leaseAgreementUrl: leaseAgreementUrl || undefined,
+      licenseUrl: licenseUrl || undefined,
     },
   });
 
