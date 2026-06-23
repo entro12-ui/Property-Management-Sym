@@ -19,6 +19,9 @@ import type { ClientPaymentProof } from '@/lib/serialize-client';
 export function PaymentProofAdminReview({ proof }: { proof: ClientPaymentProof }) {
   const canApprove = proof.extractedAmount != null && proof.extractedAmount > 0;
   const scanLabel = proof.extractedAmount != null ? 'Re-scan receipt' : 'Scan receipt';
+  const isLegacyDiskUrl = Boolean(
+    proof.fileUrl && proof.fileUrl.startsWith('/uploads/')
+  );
 
   return (
     <div className="rounded-lg border border-slate-200 p-4 dark:border-slate-600 dark:bg-slate-900/20">
@@ -60,6 +63,11 @@ export function PaymentProofAdminReview({ proof }: { proof: ClientPaymentProof }
       {proof.fileUrl && (
         <div className="mt-3">
           <FilePreviewActions fileUrl={proof.fileUrl} fileName={proof.fileName} />
+        </div>
+      )}
+      {isLegacyDiskUrl && (
+        <div className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200">
+          Legacy upload path detected. If Preview returns file not found, ask the tenant to re-upload this receipt.
         </div>
       )}
 
