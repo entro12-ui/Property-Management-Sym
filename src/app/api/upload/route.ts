@@ -3,14 +3,13 @@ import { getToken } from 'next-auth/jwt';
 import { writeFile, mkdir } from 'fs/promises';
 import path from 'path';
 import { logger } from '@/lib/logger';
+import { getUploadDir, getUploadUrl } from '@/lib/upload-storage';
 import {
   paymentProofExtension,
   validatePaymentProofFile,
   validateBuildingPhotoFile,
   buildingPhotoExtension,
 } from '@/lib/upload-utils';
-
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads');
 const ALLOWED_TYPES = ['tenant-doc', 'receipt', 'expense', 'payment-proof', 'building-photo'] as const;
 
 export async function POST(request: NextRequest) {
@@ -40,7 +39,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const dir = path.join(UPLOAD_DIR, type);
+    const dir = path.join(getUploadDir(), type);
     await mkdir(dir, { recursive: true });
 
     const ext =
@@ -56,7 +55,7 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     await writeFile(filePath, Buffer.from(bytes));
 
-    const url = `/uploads/${type}/${name}`;
+    const url = getUploadUrl(type, name);
     return NextResponse.json({ url, fileName: file.name || safeBase });
   } catch (e) {
     logger.error('File upload failed', e);

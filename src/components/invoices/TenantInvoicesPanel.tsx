@@ -14,6 +14,7 @@ import { INVOICE_STATUS_LABELS, INVOICE_CATEGORY_LABELS, PAYMENT_PROOF_STATUS_LA
 import type { ClientPaymentProof } from '@/lib/serialize-client';
 import type { InvoiceStatus, InvoiceCategory } from '@prisma/client';
 import { Droplets, Home, Zap } from 'lucide-react';
+import { FilePreviewActions } from '@/components/ui/FilePreviewActions';
 
 type TenantInvoice = {
   id: string;
@@ -27,7 +28,7 @@ type TenantInvoice = {
   status: InvoiceStatus;
   unit: { unitNumber: string; building: { name: string } };
   payments: { amount: { toString(): string } | number }[];
-  paymentProofs: { id: string; status: 'PENDING' | 'APPROVED' | 'REJECTED' }[];
+  paymentProofs: { id: string; status: 'PENDING' | 'APPROVED' | 'REJECTED'; fileUrl?: string | null; fileName?: string | null }[];
 };
 
 type TenantInvoicesPanelProps = {
@@ -185,6 +186,7 @@ function InvoiceRow({ inv, onUpload }: { inv: TenantInvoice; onUpload: () => voi
   const balance = Math.max(0, Number(inv.amount) - paid);
   const pendingProof = inv.paymentProofs.find((p) => p.status === 'PENDING');
   const approvedProof = inv.paymentProofs.some((p) => p.status === 'APPROVED');
+  const latestProofWithFile = inv.paymentProofs.find((p) => p.fileUrl);
   const category = invoiceCategory(inv);
 
   return (
@@ -215,6 +217,14 @@ function InvoiceRow({ inv, onUpload }: { inv: TenantInvoice; onUpload: () => voi
         ) : pendingProof ? (
           <span className="text-xs font-medium text-amber-600">{PAYMENT_PROOF_STATUS_LABELS.PENDING}</span>
         ) : null}
+        {latestProofWithFile?.fileUrl && (
+          <FilePreviewActions
+            fileUrl={latestProofWithFile.fileUrl}
+            fileName={latestProofWithFile.fileName}
+            previewLabel="View receipt"
+            downloadLabel="Download"
+          />
+        )}
         <button
           type="button"
           onClick={onUpload}

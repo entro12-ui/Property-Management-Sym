@@ -212,6 +212,48 @@ Without SMS credentials, messages are logged in dev mode. Only **rent** invoices
 
 ---
 
+## Deploying to Render
+
+### Environment variables
+
+In your Render web service **Environment** tab, set:
+
+| Variable | Value |
+|----------|--------|
+| `DATABASE_URL` | Your Render PostgreSQL connection string |
+| `NEXTAUTH_SECRET` | A long random string (keep stable across deploys) |
+| `NEXTAUTH_URL` | `https://your-app-name.onrender.com` (your public URL, **no trailing slash**) |
+| `AUTH_TRUST_HOST` | `true` (lets NextAuth use the Render request host for redirects) |
+| `CRON_SECRET` | Random secret for scheduled reminder jobs |
+
+> **Important:** If `NEXTAUTH_URL` is left as `http://localhost:3000`, sign-in will redirect to localhost instead of your Render URL. The app also sets `trustHost: true` so the request host is used when `NEXTAUTH_URL` is missing, but you should still set the production URL explicitly.
+
+### Persistent file uploads
+
+Uploaded receipts are stored on disk. On Render, the filesystem is **ephemeral** — files are lost on every redeploy unless you add a persistent disk:
+
+1. In Render, add a **Disk** to your web service (e.g. mount path `/var/data`)
+2. Set environment variable: `UPLOAD_DIR=/var/data/uploads`
+3. Redeploy
+
+Without a disk, tenants can upload proofs but files may disappear after the next deploy.
+
+### Build & start commands
+
+Render usually auto-detects Next.js. If configuring manually:
+
+- **Build command:** `npm install && npx prisma generate && npm run build`
+- **Start command:** `npm start`
+
+After the first deploy, run database setup via Render shell or locally against the production DB:
+
+```bash
+npm run db:sync
+npm run promote-admin -- your@email.com
+```
+
+---
+
 ## Key workflows
 
 ### Payment proof (tenant → admin)
@@ -320,6 +362,8 @@ Invoices-samples/        # Sample CBE receipt images for testing
 
 | Issue | What to do |
 |-------|------------|
+| Redirect to `localhost:3000/login` after sign-in (Render) | Set `NEXTAUTH_URL=https://your-app.onrender.com` and `AUTH_TRUST_HOST=true` in Render env vars, then redeploy |
+| Uploaded receipts return 404 or vanish (Render) | Add a persistent disk and set `UPLOAD_DIR=/var/data/uploads` |
 | `Can't reach database server` (Render) | Wake Postgres on Render dashboard; verify `DATABASE_URL` |
 | `Decimal objects are not supported` in dev | Restart dev server after updates; run `rm -rf .next && npm run dev` |
 | Receipt scan finds nothing | Set `OPENAI_API_KEY`, or enter amount/details manually |

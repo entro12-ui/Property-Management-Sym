@@ -61,3 +61,7 @@ export function buildingPhotoExtension(file: File): string {
 export function isImageProofUrl(url: string): boolean {
   return /\.(jpe?g|png|webp)(\?|$)/i.test(url);
 }
+
+export function isPdfProofUrl(url: string): boolean {
+  return /\.pdf(\?|$)/i.test(url);
+}

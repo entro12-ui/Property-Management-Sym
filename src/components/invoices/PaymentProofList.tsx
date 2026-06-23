@@ -7,7 +7,8 @@ import {
   PAYMENT_PROOF_TYPE_LABELS,
 } from '@/types';
 import { formatDate } from '@/lib/utils';
-import { isImageProofUrl } from '@/lib/upload-utils';
+import { isImageProofUrl, isPdfProofUrl } from '@/lib/upload-utils';
+import { FilePreviewActions } from '@/components/ui/FilePreviewActions';
 import type { ClientPaymentProof } from '@/lib/serialize-client';
 import type { PaymentProofStatus } from '@prisma/client';
 
@@ -65,18 +66,17 @@ export function PaymentProofList({
             </div>
           )}
 
+          {proof.fileUrl && isPdfProofUrl(proof.fileUrl) && (
+            <iframe
+              src={proof.fileUrl}
+              title={proof.fileName ?? 'Payment receipt PDF'}
+              className="mt-3 h-64 w-full rounded-lg border border-slate-200 dark:border-slate-600"
+            />
+          )}
+
           <div className="mt-3 space-y-2 text-sm">
             {proof.fileUrl && (
-              <p>
-                <a
-                  href={proof.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sky-600 hover:underline"
-                >
-                  {proof.fileName ?? 'View uploaded file'}
-                </a>
-              </p>
+              <FilePreviewActions fileUrl={proof.fileUrl} fileName={proof.fileName} />
             )}
             {proof.billingUrl && (
               <p>

@@ -12,7 +12,8 @@ import {
   PAYMENT_PROOF_TYPE_LABELS,
 } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { isImageProofUrl } from '@/lib/upload-utils';
+import { isImageProofUrl, isPdfProofUrl } from '@/lib/upload-utils';
+import { FilePreviewActions } from '@/components/ui/FilePreviewActions';
 import type { ClientPaymentProof } from '@/lib/serialize-client';
 
 export function PaymentProofAdminReview({ proof }: { proof: ClientPaymentProof }) {
@@ -45,6 +46,20 @@ export function PaymentProofAdminReview({ proof }: { proof: ClientPaymentProof }
               className="max-h-48 rounded-lg border border-slate-200 object-contain dark:border-slate-600"
             />
           </a>
+        </div>
+      )}
+
+      {proof.fileUrl && isPdfProofUrl(proof.fileUrl) && (
+        <iframe
+          src={proof.fileUrl}
+          title={proof.fileName ?? 'Payment receipt PDF'}
+          className="mt-3 h-64 w-full rounded-lg border border-slate-200 dark:border-slate-600"
+        />
+      )}
+
+      {proof.fileUrl && (
+        <div className="mt-3">
+          <FilePreviewActions fileUrl={proof.fileUrl} fileName={proof.fileName} />
         </div>
       )}
 

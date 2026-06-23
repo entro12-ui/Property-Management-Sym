@@ -40,7 +40,7 @@ export async function getInvoices(filters?: {
       include: {
         unit: { include: { building: { select: { name: true } }, tenant: { select: { id: true } } } },
         payments: true,
-        paymentProofs: { select: { id: true, status: true } },
+        paymentProofs: { select: { id: true, status: true, fileUrl: true, fileName: true } },
       },
     });
   }
@@ -55,7 +55,7 @@ export async function getInvoices(filters?: {
       include: {
         unit: { include: { building: { select: { name: true } }, tenant: { select: { id: true } } } },
         payments: true,
-        paymentProofs: { select: { id: true, status: true } },
+        paymentProofs: { select: { id: true, status: true, fileUrl: true, fileName: true } },
       },
     });
   }

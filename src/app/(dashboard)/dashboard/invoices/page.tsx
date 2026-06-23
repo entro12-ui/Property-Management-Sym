@@ -11,6 +11,7 @@ import { GenerateMonthlyInvoicesForm } from '@/components/invoices/GenerateMonth
 import { GenerateQuarterlyInvoicesForm } from '@/components/invoices/GenerateQuarterlyInvoicesForm';
 import { TenantInvoicesPanel } from '@/components/invoices/TenantInvoicesPanel';
 import { AdminPaymentProofPanel } from '@/components/invoices/AdminPaymentProofPanel';
+import { FilePreviewActions } from '@/components/ui/FilePreviewActions';
 import {
   serializeInvoicesForClient,
   serializePaymentProofsForClient,
@@ -170,6 +171,9 @@ export default async function InvoicesPage({
                 const paid = inv.payments.reduce((s, p) => s + Number(p.amount), 0);
                 const balance = Math.max(0, Number(inv.amount) - paid);
                 const pendingProofCount = inv.paymentProofs.filter((p) => p.status === 'PENDING').length;
+                const proofWithFile = inv.paymentProofs.find(
+                  (p) => (p as { fileUrl?: string | null }).fileUrl
+                ) as { fileUrl?: string | null; fileName?: string | null } | undefined;
                 return (
                   <tr key={inv.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
                     <td className="px-4 py-3 text-sm">{INVOICE_CATEGORY_LABELS[inv.category ?? 'RENT']}</td>
@@ -186,13 +190,23 @@ export default async function InvoicesPage({
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">{INVOICE_STATUS_LABELS[inv.status]}</td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
-                      {pendingProofCount > 0 ? (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
-                          {pendingProofCount} {PAYMENT_PROOF_STATUS_LABELS.PENDING.toLowerCase()}
-                        </span>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
+                      <div className="flex flex-col gap-1.5">
+                        {pendingProofCount > 0 && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                            {pendingProofCount} {PAYMENT_PROOF_STATUS_LABELS.PENDING.toLowerCase()}
+                          </span>
+                        )}
+                        {proofWithFile?.fileUrl ? (
+                          <FilePreviewActions
+                            fileUrl={proofWithFile.fileUrl}
+                            fileName={proofWithFile.fileName}
+                            previewLabel="View"
+                            downloadLabel="Save"
+                          />
+                        ) : pendingProofCount === 0 ? (
+                          <span className="text-slate-400">—</span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-right">
                       <Link href={`/dashboard/invoices/${inv.id}`} className="text-sky-500 hover:underline">View</Link>
