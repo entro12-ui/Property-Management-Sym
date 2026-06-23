@@ -1,11 +1,30 @@
 import Link from 'next/link';
 import { getTenants } from '@/app/actions/tenants';
 import { getServerI18n } from '@/i18n/server';
+import { formatServerError } from '@/lib/format-server-error';
+import { PageLoadError } from '@/components/ui/PageLoadError';
 import { Plus } from 'lucide-react';
 
 export default async function TenantsPage() {
   const { t, labels } = await getServerI18n();
-  const tenants = await getTenants();
+
+  let tenants;
+  try {
+    tenants = await getTenants();
+  } catch (error) {
+    const formatted = formatServerError(error, t('tenants.title'));
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('tenants.title')}</h1>
+        <p className="mt-1 text-slate-500 dark:text-slate-400">{t('tenants.subtitle')}</p>
+        <PageLoadError
+          title={formatted.title}
+          message={formatted.message}
+          hint={formatted.hint}
+        />
+      </div>
+    );
+  }
 
   return (
     <div>
