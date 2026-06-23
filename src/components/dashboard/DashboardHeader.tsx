@@ -76,7 +76,10 @@ export function DashboardHeader({
           </div>
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: '/login' })}
+            onClick={async () => {
+              await signOut({ redirect: false });
+              window.location.assign('/login');
+            }}
             className="touch-target inline-flex items-center justify-center gap-2 rounded-lg border border-indigo-700/50 bg-indigo-900/50 px-2.5 py-2 text-sm font-medium text-indigo-50 transition hover:bg-indigo-800/60 sm:px-3"
           >
             <LogOut className="h-4 w-4 shrink-0" />

@@ -242,10 +242,13 @@ Without a disk, tenants can upload proofs but files may disappear after the next
 
 Render usually auto-detects Next.js. If configuring manually:
 
-- **Build command:** `npm install && npx prisma generate && npm run build`
+- **Build command:** `npm install && npm run build`  
+  (`npm run build` runs `prisma generate`, **`npm run db:sync`** to create/update tables such as `stored_files`, then `next build`)
 - **Start command:** `npm start`
 
-After the first deploy, run database setup via Render shell or locally against the production DB:
+> **First deploy or after schema changes:** If uploads fail with `stored_files does not exist`, open the **Render Shell** for your web service and run `npm run db:sync`, then retry the upload. Future deploys run `db:sync` automatically during build.
+
+After the first deploy, promote your admin account via Render shell or locally against the production DB:
 
 ```bash
 npm run db:sync
@@ -362,8 +365,8 @@ Invoices-samples/        # Sample CBE receipt images for testing
 
 | Issue | What to do |
 |-------|------------|
-| Redirect to `localhost:3000/login` after sign-in (Render) | Set `NEXTAUTH_URL=https://your-app.onrender.com` and `AUTH_TRUST_HOST=true` in Render env vars, then redeploy |
-| Uploaded receipts return 404 or vanish (Render) | Deploy latest code, run `npm run db:sync`, then **re-upload** receipts (old disk-only files cannot be recovered). New uploads are stored in the database. |
+| Redirect to `localhost:3000/login` after sign-in or sign-out (Render) | Set `NEXTAUTH_URL=https://your-app.onrender.com` and `AUTH_TRUST_HOST=true` in Render env vars, then redeploy. Sign-out also uses a relative redirect in code so it stays on your Render URL after deploy. |
+| Uploaded receipts fail / `stored_files does not exist` | Run `npm run db:sync` in Render Shell (or redeploy with latest code — build runs `db:sync` automatically) |
 | `Can't reach database server` (Render) | Wake Postgres on Render dashboard; verify `DATABASE_URL` |
 | `Decimal objects are not supported` in dev | Restart dev server after updates; run `rm -rf .next && npm run dev` |
 | Receipt scan finds nothing | Set `OPENAI_API_KEY`, or enter amount/details manually |
