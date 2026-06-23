@@ -1,13 +1,19 @@
 'use server';
 
+import bcrypt from 'bcrypt';
 import { prisma } from '@/lib/db';
 import { requireAuth, requireRole } from '@/lib/auth';
 import { unitWhereForUser } from '@/lib/building-scope';
 import { logActivity } from '@/lib/activity-log';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import type { UnitStatus } from '@prisma/client';
 
+const SALT_ROUNDS = 10;
 const ADMIN_ROLES = ['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER', 'ACCOUNTANT'] as const;
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export type TenantActionResult = { success: true } | { success: false; error: string };
 
 export async function getTenants() {
   const user = await requireRole([...ADMIN_ROLES]);
@@ -42,21 +48,60 @@ export async function getTenant(id: string) {
   });
 }
 
-export async function getUsersWithoutTenant() {
-  await requireRole(['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER']);
-  const withProfile = await prisma.tenantProfile.findMany({ select: { userId: true } });
-  const ids = withProfile.map((p) => p.userId);
-  return prisma.user.findMany({
-    where: { id: { notIn: ids } },
-    select: { id: true, fullName: true, email: true },
-    orderBy: { fullName: 'asc' },
-  });
-}
+export async function createTenant(formData: FormData): Promise<TenantActionResult> {
+  const actor = await requireRole(['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER']);
 
-export async function createTenant(formData: FormData) {
-  const user = await requireRole(['SUPER_ADMIN', 'BUILDING_OWNER', 'PROPERTY_MANAGER']);
-  const userId = formData.get('userId') as string;
+  const fullName = (formData.get('fullName') as string)?.trim();
+  const email = (formData.get('email') as string)?.trim().toLowerCase();
+  const phone = (formData.get('phone') as string)?.trim() || undefined;
+  const password = formData.get('password') as string;
   const unitId = formData.get('unitId') as string;
+
+  if (!fullName) return { success: false, error: 'Full name is required.' };
+  if (!email) return { success: false, error: 'Email is required.' };
+  if (!emailRegex.test(email)) return { success: false, error: 'Please enter a valid email address.' };
+  if (!unitId) return { success: false, error: 'Please select a room.' };
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email },
+    include: { tenantProfile: { select: { id: true } } },
+  });
+
+  if (existingUser?.tenantProfile) {
+    return { success: false, error: 'A tenant profile already exists for this email.' };
+  }
+
+  let userId: string;
+
+  if (existingUser) {
+    userId = existingUser.id;
+    if (password) {
+      if (password.length < 6) return { success: false, error: 'Password must be at least 6 characters.' };
+    }
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        fullName,
+        phone: phone ?? existingUser.phone,
+        ...(password ? { passwordHash: await bcrypt.hash(password, SALT_ROUNDS) } : {}),
+        role: 'TENANT',
+      },
+    });
+  } else {
+    if (!password) return { success: false, error: 'Password is required for new tenant accounts.' };
+    if (password.length < 6) return { success: false, error: 'Password must be at least 6 characters.' };
+    const createdUser = await prisma.user.create({
+      data: {
+        email,
+        fullName,
+        phone: phone ?? null,
+        passwordHash: await bcrypt.hash(password, SALT_ROUNDS),
+        role: 'TENANT',
+      },
+    });
+    userId = createdUser.id;
+  }
+
   const address = (formData.get('address') as string) || undefined;
   const nationalId = (formData.get('nationalId') as string) || undefined;
   const tinNumber = (formData.get('tinNumber') as string) || undefined;
@@ -103,16 +148,18 @@ export async function createTenant(formData: FormData) {
   });
 
   await logActivity({
-    userId: user.id,
+    userId: actor.id,
     action: 'CREATE',
     entityType: 'TenantProfile',
     entityId: profile.id,
-    description: `Registered tenant and assigned to unit`,
+    description: `Registered tenant ${email} and assigned to unit`,
   });
 
   revalidatePath('/dashboard/tenants');
   revalidatePath('/dashboard/units');
+  revalidatePath('/dashboard/users');
   revalidatePath('/dashboard');
+  redirect(`/dashboard/tenants/${profile.id}`);
 }
 
 export async function updateTenant(id: string, formData: FormData) {

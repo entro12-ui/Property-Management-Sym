@@ -13,7 +13,6 @@ export default async function EditTenantPage({ params }: { params: Promise<{ id:
       <p className="mt-1 text-slate-500 dark:text-slate-400">{tenant.user.email}</p>
       <div className="mt-6 max-w-2xl">
         <TenantForm
-          users={[]}
           units={[]}
           tenant={{
             id: tenant.id,

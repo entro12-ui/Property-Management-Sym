@@ -10,7 +10,6 @@ import { FileUploadZone } from '@/components/ui/FileUploadZone';
 import { FileText } from 'lucide-react';
 
 type TenantFormProps = {
-  users: { id: string; fullName: string; email: string }[];
   units: { id: string; label: string }[];
   tenant?: {
     id: string;
@@ -43,8 +42,9 @@ function toInputDate(d: Date | null): string {
   return new Date(d).toISOString().slice(0, 10);
 }
 
-export function TenantForm({ users, units, tenant, submitLabel }: TenantFormProps) {
+export function TenantForm({ units, tenant, submitLabel }: TenantFormProps) {
   const { t, labels } = useLocale();
+  const [error, setError] = useState<string | null>(null);
   const [idDocUrl, setIdDocUrl] = useState(tenant?.idDocumentUrl ?? '');
   const [leaseUrl, setLeaseUrl] = useState(tenant?.leaseAgreementUrl ?? '');
   const [licenseUrl, setLicenseUrl] = useState(tenant?.licenseUrl ?? '');
@@ -71,24 +71,79 @@ export function TenantForm({ users, units, tenant, submitLabel }: TenantFormProp
   return (
     <form
       action={async (fd) => {
+        setError(null);
         if (idDocUrl) fd.set('idDocumentUrl', idDocUrl);
         if (leaseUrl) fd.set('leaseAgreementUrl', leaseUrl);
         if (licenseUrl) fd.set('licenseUrl', licenseUrl);
-        if (tenant?.id) await updateTenant(tenant.id, fd);
-        else await createTenant(fd);
+        if (tenant?.id) {
+          await updateTenant(tenant.id, fd);
+        } else {
+          const result = await createTenant(fd);
+          if (result && !result.success) setError(result.error);
+        }
       }}
       className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800"
     >
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
+          {error}
+        </div>
+      )}
       {!tenant && (
         <>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('tenants.user')}</label>
-            <select name="userId" required className="mt-1 w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 text-slate-900 dark:text-white">
-              <option value="">{t('tenants.selectUser')}</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>{u.fullName} ({u.email})</option>
-              ))}
-            </select>
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-700 dark:bg-slate-900/30">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{t('tenants.accountSection')}</h3>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{t('tenants.accountSectionHint')}</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {t('tenants.fullName')}
+                </label>
+                <input
+                  id="fullName"
+                  name="fullName"
+                  required
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {t('common.email')}
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                />
+              </div>
+              <div>
+                <label htmlFor="phone" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {t('common.phone')}
+                </label>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  {t('tenants.temporaryPassword')}
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  minLength={6}
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                />
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('tenants.temporaryPasswordHint')}</p>
+              </div>
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">{t('common.room')}</label>
