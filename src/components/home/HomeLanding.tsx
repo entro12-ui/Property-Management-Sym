@@ -85,6 +85,15 @@ export function HomeLanding() {
               </Link>
             </div>
             <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">{t('home.ownerGetStartedDesc')}</p>
+            <div className="mt-3">
+              <Link
+                href="/pricing"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-sky-700 transition hover:text-sky-800 dark:text-sky-300 dark:hover:text-sky-200"
+              >
+                {t('nav.pricing')}
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </div>
 
           {/* Preview card */}
@@ -114,7 +123,7 @@ export function HomeLanding() {
       </section>
 
       {/* Features */}
-      <section className="relative border-t border-slate-200/80 bg-white/60 py-12 sm:py-20 dark:border-slate-800 dark:bg-slate-900/40">
+      <section id="features" className="relative border-t border-slate-200/80 bg-white/60 py-12 sm:py-20 dark:border-slate-800 dark:bg-slate-900/40">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">

@@ -24,10 +24,14 @@ export function SiteFooter() {
               {t('home.footerProduct')}
             </h3>
             <ul className="mt-4 space-y-2.5 text-sm">
+              <li>
+                <Link href="/pricing" className="text-stone-300 transition hover:text-amber-400">
+                  {t('nav.pricing')}
+                </Link>
+              </li>
               <li><span className="text-stone-300">{t('nav.tenants')}</span></li>
               <li><span className="text-stone-300">{t('nav.income')}</span></li>
               <li><span className="text-stone-300">{t('nav.reports')}</span></li>
-              <li><span className="text-stone-300">{t('nav.announcements')}</span></li>
             </ul>
           </div>
           <div>
