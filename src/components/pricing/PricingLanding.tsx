@@ -78,7 +78,6 @@ export function PricingLanding() {
           t('pricing.proFeature3'),
           t('pricing.proFeature4'),
           t('pricing.proFeature5'),
-          t('pricing.proFeature6'),
         ],
       },
       {
@@ -112,7 +111,6 @@ export function PricingLanding() {
       { label: t('pricing.rowRoleAccounts'), starter: '2', pro: t('pricing.unlimited'), enterprise: t('pricing.unlimited') },
       { label: t('pricing.rowPortal'), starter: t('pricing.statusIncluded'), pro: t('pricing.statusIncluded'), enterprise: t('pricing.statusIncluded') },
       { label: t('pricing.rowInvoices'), starter: t('pricing.statusIncluded'), pro: t('pricing.statusIncluded'), enterprise: t('pricing.statusIncluded') },
-      { label: t('pricing.rowOcr'), starter: '—', pro: t('pricing.statusIncluded'), enterprise: t('pricing.statusIncluded') },
       { label: t('pricing.rowApprovals'), starter: '—', pro: t('pricing.statusIncluded'), enterprise: t('pricing.statusIncluded') },
       { label: t('pricing.rowSms'), starter: t('pricing.statusBasic'), pro: t('pricing.statusIncluded'), enterprise: t('pricing.statusIncluded') },
       { label: t('pricing.rowExports'), starter: t('pricing.statusBasic'), pro: t('pricing.statusIncluded'), enterprise: t('pricing.statusIncluded') },
